@@ -1,8 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -76,11 +74,11 @@ kotlin {
 }
 
 android {
-    namespace = "ponder.contemplate"
+    namespace = "ponder.ember"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "ponder.contemplate"
+        applicationId = "ponder.ember"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -108,11 +106,11 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "ponder.contemplate.MainKt"
+        mainClass = "ponder.ember.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "ponder.contemplate"
+            packageName = "ponder.ember"
             packageVersion = "1.0.0"
         }
     }
