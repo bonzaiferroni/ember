@@ -1,6 +1,7 @@
 package ponder.ember
 
 import compose.icons.TablerIcons
+import compose.icons.tablericons.Edit
 import compose.icons.tablericons.Heart
 import compose.icons.tablericons.Home
 import compose.icons.tablericons.Rocket
@@ -29,7 +30,7 @@ val appConfig = PondConfig(
     ),
     doors = persistentListOf(
         PortalDoor(TablerIcons.Home, StartRoute),
-        PortalDoor(TablerIcons.YinYang, HelloRoute),
+        PortalDoor(TablerIcons.Edit, WriterRoute),
         PortalDoor(TablerIcons.Rocket, ExampleListRoute),
     ),
 )
