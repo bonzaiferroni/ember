@@ -2,10 +2,10 @@ package ponder.ember
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.font.FontWeight
-import contemplate.app.generated.resources.Inter_18pt_Regular
-import contemplate.app.generated.resources.Inter_24pt_Light
-import contemplate.app.generated.resources.Inter_28pt_Light
-import contemplate.app.generated.resources.Res
+import ember.app.generated.resources.Inter_18pt_Regular
+import ember.app.generated.resources.Inter_24pt_Light
+import ember.app.generated.resources.Inter_28pt_Light
+import ember.app.generated.resources.Res
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 import pondui.io.ProvideUserContext

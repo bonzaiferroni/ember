@@ -1,4 +1,4 @@
-rootProject.name = "contemplate"
+rootProject.name = "ember"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {

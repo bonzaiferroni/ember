@@ -11,8 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import contemplate.app.generated.resources.Res
-import contemplate.app.generated.resources.compose_multiplatform
+import ember.app.generated.resources.Res
+import ember.app.generated.resources.compose_multiplatform
 import org.jetbrains.compose.resources.painterResource
 import ponder.ember.Greeting
 import ponder.ember.HelloRoute
