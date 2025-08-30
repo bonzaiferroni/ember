@@ -30,12 +30,16 @@ fun WriterScreen(
     val state by viewModel.stateFlow.collectAsState()
     Scaffold {
         Column(1) {
-            TextField(
+            WriterBlock(
                 text = state.content,
-                onTextChanged = viewModel::setContent,
-                placeholder = "What be on yer mind?",
-                modifier = Modifier.fillMaxWidth()
+                onValueChange = viewModel::setContent
             )
+//            TextField(
+//                text = state.content,
+//                onTextChanged = viewModel::setContent,
+//                placeholder = "What be on yer mind?",
+//                modifier = Modifier.fillMaxWidth()
+//            )
 //            Row(1) {
 //                DropMenu(state.voice, onSelect = viewModel::setVoice)
 //                Button("Say", onClick = viewModel::play)
@@ -54,14 +58,3 @@ fun WriterScreen(
     }
 }
 
-@Composable
-fun ByteArrayImage(bytes: ByteArray, modifier: Modifier = Modifier) {
-    val bmp = remember(bytes) {
-        val data = Data.makeFromBytes(bytes)
-        val codec = Codec.makeFromData(data)
-        val dst = Bitmap().apply { allocPixels(codec.imageInfo) }
-        codec.readPixels(dst)
-        dst.asImageBitmap()
-    }
-    bmp?.let { Image(bitmap = bmp, contentDescription = null, modifier = modifier) }
-}
