@@ -5,6 +5,7 @@ import kabinet.clients.KokoroKmpClient
 import kabinet.clients.OllamaClient
 import kabinet.clients.StableDiffClient
 import kabinet.model.SpeechVoice
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import pondui.WavePlayer
@@ -56,6 +57,13 @@ class WriterModel(
                 wavePlayer.play(bytes)
             }
         }
+    }
+
+    fun onWord(word: String) {
+//        viewModelScope.launch(Dispatchers.IO) {
+//            val bytes = kokoro.getCacheMessage(word)
+//            wavePlayer.play(bytes)
+//        }
     }
 }
 

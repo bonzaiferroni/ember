@@ -19,6 +19,7 @@ import pondui.ui.controls.Column
 import pondui.ui.controls.DropMenu
 import pondui.ui.controls.Row
 import pondui.ui.controls.Scaffold
+import pondui.ui.controls.Section
 import pondui.ui.controls.Text
 import pondui.ui.controls.TextField
 import java.io.ByteArrayInputStream
@@ -30,10 +31,13 @@ fun WriterScreen(
     val state by viewModel.stateFlow.collectAsState()
     Scaffold {
         Column(1) {
-            WriterBlock(
-                text = state.content,
-                onValueChange = viewModel::setContent
-            )
+            Section {
+                Writer(
+                    text = state.content,
+                    onWord = viewModel::onWord,
+                    onValueChange = viewModel::setContent
+                )
+            }
 //            TextField(
 //                text = state.content,
 //                onTextChanged = viewModel::setContent,
