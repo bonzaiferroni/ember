@@ -5,13 +5,12 @@ import compose.icons.tablericons.Edit
 import compose.icons.tablericons.Heart
 import compose.icons.tablericons.Home
 import compose.icons.tablericons.Rocket
-import compose.icons.tablericons.YinYang
 import kotlinx.collections.immutable.persistentListOf
 import ponder.ember.ui.ExampleListScreen
 import ponder.ember.ui.ExampleProfileScreen
 import ponder.ember.ui.HelloScreen
 import ponder.ember.ui.StartScreen
-import ponder.ember.ui.WriterScreen
+import ponder.ember.ui.ZenWriterScreen
 import pondui.ui.core.PondConfig
 import pondui.ui.core.RouteConfig
 import pondui.ui.nav.PortalDoor
@@ -26,7 +25,7 @@ val appConfig = PondConfig(
         RouteConfig(HelloRoute::matchRoute) { defaultScreen<HelloRoute> { HelloScreen() } },
         RouteConfig(ExampleListRoute::matchRoute) { defaultScreen<ExampleListRoute> { ExampleListScreen() } },
         RouteConfig(ExampleProfileRoute::matchRoute) { defaultScreen<ExampleProfileRoute> { ExampleProfileScreen(it) } },
-        RouteConfig(WriterRoute::matchRoute) { defaultScreen<WriterRoute> { WriterScreen() } }
+        RouteConfig(WriterRoute::matchRoute) { defaultScreen<WriterRoute> { ZenWriterScreen() } }
     ),
     doors = persistentListOf(
         PortalDoor(TablerIcons.Home, StartRoute),

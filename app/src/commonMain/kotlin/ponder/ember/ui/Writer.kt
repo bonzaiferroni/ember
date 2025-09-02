@@ -25,8 +25,10 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import pondui.ui.controls.LazyColumn
+import pondui.ui.theme.Pond
 
 @Composable
 fun Writer(
@@ -34,16 +36,26 @@ fun Writer(
     onWord: (String) -> Unit,
     onValueChange: (String) -> Unit
 ) {
-    val blocks = remember(text) { text.split('\n') }
+    val blockWidthPx = 200
+    val style = Pond.typo.body
+    val ruler = rememberTextMeasurer()
+    val spacePx = rememberSpacePx(style)
+    val model = WriterModel(ruler, style, blockWidthPx, spacePx.width)
+    val content = remember(text) { model.create(text) }
     val focusRequester = remember { FocusRequester() }
     var cursor by remember { mutableIntStateOf(text.length) }
     var isFocused by remember { mutableStateOf(false) }
+
     LaunchedEffect(text) {
         cursor = cursor.coerceIn(0, text.length)
     }
 
     fun moveCursor(delta: Int) {
         cursor += delta
+    }
+
+    fun moveCursorLine(delta: Int) {
+        // cursor = content.moveCursorLine(cursor, delta)
     }
 
     fun addCharacter(char: Char) {
@@ -74,6 +86,8 @@ fun Writer(
                     Key.Enter -> addCharacter('\n')
                     Key.MoveEnd -> moveCursor(text.length - cursor)
                     Key.MoveHome -> moveCursor(-cursor)
+                    Key.DirectionUp -> moveCursorLine(-1)
+                    Key.DirectionDown -> moveCursorLine(1)
                     else -> isConsumed = false
                 }
 
@@ -92,16 +106,18 @@ fun Writer(
                 interactionSource = remember { MutableInteractionSource() }
             ) { focusRequester.requestFocus(); println("focused") }
     ) {
-        itemsIndexed(blocks) { index, block ->
-            val blockStartIndex = (0 until index).sumOf { blocks[it].length + 1 }
-            val blockEndIndex = blockStartIndex + block.length
+        itemsIndexed(content.blocks) { index, blockContent ->
+            val blockStartIndex = (0 until index).sumOf { content.blocks[it].text.length + 1 }
+            val blockEndIndex = blockStartIndex + blockContent.text.length
             // println("c: $cursor, s: $blockStartIndex, e: $blockEndIndex, f: $isFocused")
+
+            val isCursorPresent = isFocused && cursor >= blockStartIndex && cursor <= blockEndIndex
             WriterBlock(
-                text = block,
-                cursor = cursor.takeIf {
-                    isFocused && it >= blockStartIndex && it <= blockEndIndex
-                }?.let { it - blockStartIndex },
-                onWord = onWord,
+                content = blockContent,
+                cursor = cursor.takeIf { isCursorPresent }?.let { it - blockStartIndex },
+                style = style,
+                ruler = ruler,
+                spacePx = spacePx
             )
         }
     }
