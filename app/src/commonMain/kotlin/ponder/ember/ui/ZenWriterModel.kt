@@ -15,8 +15,8 @@ class ZenWriterModel(
     private val kokoro: KokoroKmpClient = KokoroKmpClient(),
     private val ollama: OllamaClient = OllamaClient(),
     // private val stableDiff: StableDiffClient = StableDiffClient()
-): StateModel<WriterState>() {
-    override val state = ModelState(WriterState())
+): StateModel<ZenWriterState>() {
+    override val state = ModelState(ZenWriterState())
 
     fun setContent(content: String) = setState { it.copy(content = content) }
 
@@ -64,7 +64,7 @@ class ZenWriterModel(
     }
 }
 
-data class WriterState(
+data class ZenWriterState(
     val content: String = "",
     val voice: SpeechVoice = SpeechVoice.Sky,
     val response: String = "",

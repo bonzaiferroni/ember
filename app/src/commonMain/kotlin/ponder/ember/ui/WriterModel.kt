@@ -4,55 +4,110 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.abs
 
 internal class WriterModel(
     val ruler: TextMeasurer,
     val style: TextStyle,
-    val blockWidthPx: Int,
     val spacePx: Int,
 ) {
-    var content: WriterContent = WriterContent("", emptyList())
+    private val state = MutableStateFlow(WriterState())
+    internal val stateNow get() = state.value
+    val stateFlow: StateFlow<WriterState> = state
 
-    fun create(text: String): WriterContent {
-        var startIndex = 0
-        val blocks = text.split('\n').map { blockText ->
-            val blockContent = content.blocks.firstOrNull { it.text == blockText }?.copy(textIndex = startIndex)
-                ?: parseBlockContent(blockText, startIndex, ruler, style, blockWidthPx, spacePx)
-            startIndex += blockText.length + 1
+    private fun setState(block: (WriterState) -> WriterState) {
+        state.value = block(state.value)
+    }
+
+    private var cursorTarget = 0
+
+    fun updateContent(text: String, blockWidthPx: Int) {
+        if (text == stateNow.text && blockWidthPx == stateNow.blockWidthPx) return
+
+        var textIndex = 0
+        val blocks = text.split('\n').mapIndexed { blockIndex, blockText ->
+            val blockContent = stateNow.blocks.takeIf { stateNow.blockWidthPx == blockWidthPx }
+                ?.firstOrNull { it.text == blockText }
+                ?.copy(textIndex = textIndex, blockIndex = blockIndex)
+                ?: parseBlockContent(blockText, textIndex, blockIndex, ruler, style, blockWidthPx, spacePx)
+            textIndex += blockText.length + 1
             blockContent
         }
-        return WriterContent(
-            text = text,
-            blocks = blocks,
-        ).also { content = it }
+
+        val nextState = stateNow.copy(text = text, blocks = blocks, blockWidthPx = blockWidthPx)
+
+        setState {
+            if (cursorTarget != nextState.cursor.textIndex) {
+                nextState.moveCursorToIndex(cursorTarget - stateNow.cursor.textIndex, ruler, style, spacePx)
+            } else nextState
+        }
+    }
+
+    fun moveCursor(delta: Int) {
+        setState { it.moveCursorToIndex(delta, ruler, style, spacePx) }
+    }
+
+    fun targetCursor(delta: Int) {
+        cursorTarget = stateNow.cursor.textIndex + delta
+    }
+
+    fun moveCursorLine(delta: Int) {
+        setState { it.moveCursorLine(delta, ruler, style, spacePx) }
     }
 }
 
-internal data class WriterContent(
-    val text: String,
-    val blocks: List<BlockContent>,
+internal data class WriterState(
+    val text: String = "",
+    val blocks: List<WriterBlock> = listOf(WriterBlock.Empty),
+    val cursor: WriterCursor = WriterCursor.Home,
+    val blockWidthPx: Int = 0,
 )
 
+internal data class WriterCursor(
+    val textIndex: Int,
+    val blockIndex: Int,
+    val lineIndex: Int,
+    val chunkIndex: Int,
+    val offsetX: Int,
+    val preferredOffsetX: Int
+) {
+    companion object {
+        val Home = WriterCursor(0, 0, 0, 0, 0, 0)
+    }
+}
+
 @Stable
-internal data class BlockContent(
+internal data class WriterBlock(
     val text: String,
     val chunks: List<WriterChunk>,
     val lines: List<WriterLine>,
     val textIndex: Int,
+    val blockIndex: Int,
 ) {
     val endTextIndex get() = textIndex + text.length
+
+    companion object {
+        val Empty = WriterBlock("", listOf(), emptyList(), 0, 0)
+    }
 }
 
 internal data class WriterChunk(
     val text: String,
     val textLayout: TextLayoutResult,
-    val textIndex: Int,
+    val blockTextIndex: Int,
     val lineIndex: Int,
+    val chunkIndex: Int,
     val offsetX: Int,
     val isContinued: Boolean,
 ) {
-    val endTextIndex get() = textIndex + text.length
+    val endTextIndex get() = blockTextIndex + text.length
+    val endOffsetX get() = offsetX + textLayout.size.width
+
+    companion object {
+        // val Empty = WriterChunk("")
+    }
 }
 
 internal data class WriterLine(
@@ -66,64 +121,102 @@ internal data class WriterLine(
     val endTextIndex get() = textIndex + length
 }
 
-internal data class WriterCursor(
-    val index: Int,
-    val offsetX: Int,
-    val preferredOffsetX: Int
-)
-
-internal fun WriterModel.moveCursorLine(cursor: WriterCursor, delta: Int): WriterCursor {
+internal fun WriterState.moveCursorLine(
+    delta: Int,
+    ruler: TextMeasurer,
+    style: TextStyle,
+    spacePx: Int
+): WriterState {
     require(abs(delta) == 1) { "line cursor delta must be 1 or -1" }
-    val blocks = content.blocks
-    val currentBlock = blocks.first { cursor.index >= it.textIndex }
-    val currentLine = currentBlock.lines.first { cursor.index >= it.textIndex }
-    val blockIndex = blocks.indexOfFirst { currentBlock.textIndex == it.textIndex }
-    val lineIndex = currentBlock.lines.indexOfFirst { currentLine.textIndex == it.textIndex } + delta
-    if (lineIndex < 0) {
-        if (blockIndex == 0) return WriterCursor(
-            index = 0,
-            offsetX = 0,
-            preferredOffsetX = 0
-        )
-        val block = blocks[blockIndex - 1]
-        val line = block.lines[block.lines.size - 1]
-        return putCursorOnLine(cursor, line.chunkIndex)
+    val blocks = blocks
+    val block = blocks[cursor.blockIndex]
+    val newLineIndex = cursor.lineIndex + delta
+    val textIndex = if (newLineIndex < 0) {
+        if (cursor.blockIndex == 0) return copy(cursor = WriterCursor.Home)
+        val block = blocks[cursor.blockIndex - 1]
+        val line = block.lines.last()
+        findNearestTextIndex(block.blockIndex, line.lineIndex, cursor.preferredOffsetX, ruler, style)
+    } else if (newLineIndex >= block.lines.size) {
+        if (cursor.blockIndex + 1 >= blocks.size) {
+            text.length
+        } else {
+            findNearestTextIndex(cursor.blockIndex + 1, 0, cursor.preferredOffsetX, ruler, style)
+        }
+    } else {
+        findNearestTextIndex(cursor.blockIndex, newLineIndex, cursor.preferredOffsetX, ruler, style)
     }
-    return cursor // incomplete
+    return createCursorAtIndex(textIndex, ruler, style, spacePx, false)
 }
 
-internal fun WriterModel.indexOffsetX(index: Int): Int {
-    val block = content.blocks.first { index >= it.textIndex }
-    val line = block.lines.first { index >= it.textIndex }
-    val chunk = block.chunks.first { index >= it.textIndex }
-    var chunkIndex = block.chunks.indexOfFirst { it.textIndex == chunk.textIndex }
-    var offsetX = ruler.measure(chunk.text.take(index - chunk.textIndex), style).size.width
-    var offsetIndex = chunk.textIndex
-    while (offsetIndex > line.textIndex) {
+internal fun WriterState.createCursorAtIndex(
+    textIndex: Int,
+    ruler: TextMeasurer,
+    style: TextStyle,
+    spacePx: Int,
+    setPreferred: Boolean
+): WriterState {
+    val block = blocks.first { it.endTextIndex >= textIndex }
+    val blockTextIndex = textIndex - block.textIndex
+    val line = block.lines.firstOrNull { it.endTextIndex >= blockTextIndex }
+    val lineTextIndex = line?.textIndex ?: blockTextIndex
+    val chunk = block.chunks.firstOrNull { it.endTextIndex >= blockTextIndex }
+    var chunkIndex = chunk?.chunkIndex ?: 0
+    var offsetX = chunk?.let {
+        ruler.measure(chunk.text.take(blockTextIndex - chunk.blockTextIndex), style).size.width
+    } ?: 0
+    var offsetIndex = chunk?.blockTextIndex ?: blockTextIndex
+    while (offsetIndex > lineTextIndex) {
         val lineChunk = block.chunks[--chunkIndex]
         offsetX += lineChunk.textLayout.size.width + spacePx
-        offsetIndex = lineChunk.textIndex
+        offsetIndex = lineChunk.blockTextIndex
     }
-    return offsetX
-}
-
-internal fun WriterModel.moveCursorIndex(cursor: WriterCursor, delta: Int): WriterCursor {
-    val index = (cursor.index + delta).coerceIn(0, content.text.length)
-    val offsetX = indexOffsetX(index)
-    return WriterCursor(
-        index = index,
-        offsetX = offsetX,
-        preferredOffsetX = offsetX
+    return copy(
+        cursor = WriterCursor(
+            textIndex = textIndex,
+            blockIndex = block.blockIndex,
+            lineIndex = line?.lineIndex ?: 0,
+            chunkIndex = chunk?.chunkIndex ?: 0,
+            offsetX = offsetX,
+            preferredOffsetX = if (setPreferred) offsetX else cursor.preferredOffsetX
+        )
     )
 }
 
-internal fun WriterModel.putCursorOnLine(cursor: WriterCursor, textIndex: Int): WriterCursor {
-    val block = content.blocks.first { textIndex >= it.textIndex }
-    val line = block.lines.first { textIndex >= it.textIndex }
+internal fun WriterState.moveCursorToIndex(
+    delta: Int,
+    ruler: TextMeasurer,
+    style: TextStyle,
+    spacePx: Int
+): WriterState {
+    val index = (cursor.textIndex + delta).coerceIn(0, text.length)
+    return createCursorAtIndex(index, ruler, style, spacePx, true)
+}
+
+internal fun WriterState.findNearestTextIndex(
+    blockIndex: Int,
+    lineIndex: Int,
+    targetX: Int,
+    ruler: TextMeasurer,
+    style: TextStyle,
+): Int {
+    val block = blocks[blockIndex]
     val chunk = block.chunks.firstOrNull {
-        textIndex >= it.textIndex
-                && it.offsetX + it.textLayout.size.width >= cursor.preferredOffsetX
-                && it.lineIndex == line.lineIndex
-    } ?: block.chunks.last { it.lineIndex == line.lineIndex }
-    return cursor // incomplete
+        it.lineIndex == lineIndex && it.endOffsetX >= targetX
+    } ?: block.chunks.last { it.lineIndex == lineIndex }
+    if (targetX >= chunk.endOffsetX) return chunk.endTextIndex
+    var blockTextIndex = chunk.blockTextIndex
+    var lastSubWidth = 0
+    while (blockTextIndex < chunk.endTextIndex) {
+        val nextCharIndex = blockTextIndex + 1 - chunk.blockTextIndex
+        val subWidth = ruler.measure(chunk.text.take(nextCharIndex), style).size.width
+        if (subWidth + chunk.offsetX > targetX) {
+            if ((subWidth + chunk.offsetX) - targetX < targetX - (lastSubWidth + chunk.offsetX)) {
+                blockTextIndex++
+            }
+            break
+        }
+        lastSubWidth = subWidth
+        blockTextIndex++
+    }
+    return block.textIndex + blockTextIndex
 }

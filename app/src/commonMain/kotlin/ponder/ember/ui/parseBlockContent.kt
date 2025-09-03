@@ -5,17 +5,19 @@ import androidx.compose.ui.text.TextStyle
 
 internal fun parseBlockContent(
     text: String,
-    startIndex: Int,
+    textIndex: Int,
+    blockIndex: Int,
     ruler: TextMeasurer,
     style: TextStyle,
     blockWidthPx: Int,
     spacePx: Int,
-): BlockContent {
-    if (text.isEmpty()) return BlockContent(
+): WriterBlock {
+    if (text.isEmpty()) return WriterBlock(
         text = "",
         chunks = emptyList(),
         lines = emptyList(),
-        textIndex = 0
+        textIndex = textIndex,
+        blockIndex = blockIndex
     )
 
     val chunks = mutableListOf<WriterChunk>()
@@ -57,10 +59,11 @@ internal fun parseBlockContent(
                         val writerChunk = WriterChunk(
                             text = subWord,
                             textLayout = subLayout,
-                            textIndex = index + subIndex,
+                            blockTextIndex = index + subIndex,
                             isContinued = isContinued,
                             offsetX = 0,
-                            lineIndex = lines.size
+                            lineIndex = lines.size,
+                            chunkIndex = chunks.size,
                         )
                         chunks.add(writerChunk)
                         lineChunkCount = 1
@@ -77,10 +80,11 @@ internal fun parseBlockContent(
             val writerChunk = WriterChunk(
                 text = word,
                 textLayout = textLayout,
-                textIndex = index,
+                blockTextIndex = index,
                 isContinued = false,
                 offsetX = offsetX,
-                lineIndex = lines.size
+                lineIndex = lines.size,
+                chunkIndex = chunks.size,
             )
             chunks.add(writerChunk)
             offsetX += textLayout.size.width + spacePx
@@ -91,10 +95,11 @@ internal fun parseBlockContent(
 
     finishLine(index)
 
-    return BlockContent(
+    return WriterBlock(
         text = text,
         chunks = chunks,
         lines = lines,
-        textIndex = startIndex,
+        textIndex = textIndex,
+        blockIndex = blockIndex,
     )
 }

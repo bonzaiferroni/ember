@@ -3,10 +3,12 @@ package ponder.ember.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -18,13 +20,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isAltPressed
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import pondui.ui.controls.LazyColumn
@@ -36,37 +36,28 @@ fun Writer(
     onWord: (String) -> Unit,
     onValueChange: (String) -> Unit
 ) {
-    val blockWidthPx = 200
+    var blockWidthPx by remember { mutableIntStateOf(0) }
     val style = Pond.typo.body
     val ruler = rememberTextMeasurer()
     val spacePx = rememberSpacePx(style)
-    val model = WriterModel(ruler, style, blockWidthPx, spacePx.width)
-    val content = remember(text) { model.create(text) }
+    val model = remember { WriterModel(ruler, style, spacePx.width) }
+    val state by model.stateFlow.collectAsState()
+    val cursorIndex = state.cursor.textIndex
+
+    model.updateContent(text, blockWidthPx)
     val focusRequester = remember { FocusRequester() }
-    var cursor by remember { mutableIntStateOf(text.length) }
     var isFocused by remember { mutableStateOf(false) }
 
-    LaunchedEffect(text) {
-        cursor = cursor.coerceIn(0, text.length)
-    }
-
-    fun moveCursor(delta: Int) {
-        cursor += delta
-    }
-
-    fun moveCursorLine(delta: Int) {
-        // cursor = content.moveCursorLine(cursor, delta)
-    }
-
     fun addCharacter(char: Char) {
-        val pos = minOf(text.length, cursor)
+        val pos = minOf(text.length, cursorIndex)
+        model.targetCursor(1)
         onValueChange(text.insertAt(pos, char))
-        moveCursor(1)
     }
 
     LazyColumn(
         gap = 1,
-        modifier = Modifier.widthIn(min = 20.dp)
+        modifier = Modifier.onGloballyPositioned { layout -> blockWidthPx = layout.size.width  }
+            .fillMaxWidth()
             .onFocusChanged { isFocused = it.isFocused }
             .focusRequester(focusRequester)
             .focusable()
@@ -78,16 +69,16 @@ fun Writer(
 
                 when (event.key) {
                     Key.Backspace -> {
-                        moveCursor(-1)
+                        model.moveCursor(-1)
                         onValueChange(text.dropLast(1))
                     }
-                    Key.DirectionLeft -> moveCursor(-1)
-                    Key.DirectionRight -> moveCursor(1)
+                    Key.DirectionLeft -> model.moveCursor(-1)
+                    Key.DirectionRight -> model.moveCursor(1)
                     Key.Enter -> addCharacter('\n')
-                    Key.MoveEnd -> moveCursor(text.length - cursor)
-                    Key.MoveHome -> moveCursor(-cursor)
-                    Key.DirectionUp -> moveCursorLine(-1)
-                    Key.DirectionDown -> moveCursorLine(1)
+                    Key.MoveEnd -> model.moveCursor(text.length - cursorIndex)
+                    Key.MoveHome -> model.moveCursor(-cursorIndex)
+                    Key.DirectionUp -> model.moveCursorLine(-1)
+                    Key.DirectionDown -> model.moveCursorLine(1)
                     else -> isConsumed = false
                 }
 
@@ -106,17 +97,11 @@ fun Writer(
                 interactionSource = remember { MutableInteractionSource() }
             ) { focusRequester.requestFocus(); println("focused") }
     ) {
-        itemsIndexed(content.blocks) { index, blockContent ->
-            val blockStartIndex = (0 until index).sumOf { content.blocks[it].text.length + 1 }
-            val blockEndIndex = blockStartIndex + blockContent.text.length
-            // println("c: $cursor, s: $blockStartIndex, e: $blockEndIndex, f: $isFocused")
-
-            val isCursorPresent = isFocused && cursor >= blockStartIndex && cursor <= blockEndIndex
+        items(state.blocks) { block ->
+            val isCursorPresent = isFocused && cursorIndex >= block.textIndex && cursorIndex <= block.endTextIndex
             WriterBlock(
-                content = blockContent,
-                cursor = cursor.takeIf { isCursorPresent }?.let { it - blockStartIndex },
-                style = style,
-                ruler = ruler,
+                content = block,
+                cursor = state.cursor.takeIf { isCursorPresent },
                 spacePx = spacePx
             )
         }
