@@ -80,8 +80,10 @@ fun Writer(
 
                 when (event.key) {
                     Key.Backspace -> {
-                        model.moveCursor(-1, false)
-                        onValueChange(text.dropLast(1))
+                        if (selection == null) {
+                            model.moveCursor(-1, true)
+                        }
+                        model.cutSelectionText()
                     }
                     Key.DirectionLeft -> {
                         if (!event.isShiftPressed && selection != null) {

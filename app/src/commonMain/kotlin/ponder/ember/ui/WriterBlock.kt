@@ -18,6 +18,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -43,6 +47,9 @@ internal fun WriterBlock(
     val spaceDp = with(density) { DpSize(spacePx.width.toDp(), spacePx.height.toDp()) }
     val lines = block.lines
     val chunks = block.chunks
+    val lineSpaceDp = 1.dp
+    val lineSpacePx = with(density) { lineSpaceDp.toPx() }
+    println(lineSpacePx)
 
     val selectionLines = selection?.let { selection ->
         lines.mapNotNull { line ->
@@ -53,31 +60,29 @@ internal fun WriterBlock(
             val startX = if (selection.start.textIndex > lineTextIndex) selection.start.offsetX else 0
             val endX = if (selection.end.textIndex < lineEndTextIndex) selection.end.offsetX
             else chunks.last { it.lineIndex == line.lineIndex }.endOffsetX
-            val topLeft = with (density) { DpOffset(
-                x = startX.toDp(),
-                y = (spacePx.height * (selection.start.lineIndex + line.lineIndex)).toDp()
-            ) }
-            val size = with (density) {
-                DpSize(
-                    width = (endX - startX).toDp(),
-                    height = spacePx.height.toDp()
-                )
-            }
+            val topLeft = Offset(
+                x = startX.toFloat(),
+                y = ((spacePx.height + lineSpacePx) * line.lineIndex)
+            )
+            val size = Size(
+                width = (endX - startX).toFloat(),
+                height = spacePx.height.toFloat()
+            )
             Pair(topLeft, size)
         }
     }
 
-    val selectionColor = Color.Cyan.copy(.5f)
+    val selectionColor = Color.Cyan.copy(.3f)
 
     Box(
         modifier = Modifier.fillMaxWidth()
-            .height(maxOf(spaceDp.height * lines.size, spaceDp.height))
+            .height(maxOf((spaceDp.height + lineSpaceDp) * lines.size, spaceDp.height))
     ) {
         selectionLines?.forEach { (topLeft, size) ->
             Box(
-                modifier = Modifier.offset(topLeft.x, topLeft.y)
-                    .background(selectionColor)
-                    .size(size)
+                modifier = Modifier.drawBehind {
+                        drawRoundRect(selectionColor, topLeft, size, cornerRadius = CornerRadius(3f))
+                    }
             )
         }
 
@@ -87,7 +92,7 @@ internal fun WriterBlock(
             val flipIndex = remember(text) { (0..2).random() }
             val flipDirection = remember(text) { 1.randomFlip() }
             val offsetXDp = with(density) { chunk.offsetX.toDp() }
-            val offsetYDp = spaceDp.height * chunk.lineIndex
+            val offsetYDp = (spaceDp.height + lineSpaceDp) * chunk.lineIndex
 
             val size = with(density) { textLayout.size.let { DpSize(it.width.toDp(), it.height.toDp()) } }
 
@@ -112,7 +117,7 @@ internal fun WriterBlock(
         }
         cursor?.let {
             val offsetX = with(density) { it.offsetX.toDp() }
-            val offsetY = spaceDp.height * cursor.lineIndex
+            val offsetY = (spaceDp.height + lineSpaceDp) * cursor.lineIndex
             // println("offsetX: $offsetX textIndex: ${it.textIndex}")
             DrawCursor(offsetX, offsetY, spaceDp)
         }
@@ -125,11 +130,11 @@ internal fun DrawCursor(
     offsetY: Dp,
     spaceDp: DpSize,
 ) {
-    val cursorAlpha = remember { Animatable(cursorAlphaCache) }
+    val cursorAlpha = remember { Animatable(1f) }
 
-    LaunchedEffect(cursorAlpha) {
-        cursorAlphaCache = cursorAlpha.value
-    }
+//    LaunchedEffect(cursorAlpha) {
+//        cursorAlphaCache = cursorAlpha.value
+//    }
 
     LaunchedEffect(Unit) {
         val fadeMs = 320

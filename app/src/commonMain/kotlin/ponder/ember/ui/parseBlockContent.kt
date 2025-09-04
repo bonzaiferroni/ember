@@ -12,14 +12,6 @@ internal fun parseBlockContent(
     blockWidthPx: Int,
     spacePx: Int,
 ): WriterBlock {
-    if (text.isEmpty()) return WriterBlock(
-        text = "",
-        chunks = emptyList(),
-        lines = emptyList(),
-        textIndex = textIndex,
-        blockIndex = blockIndex
-    )
-
     val chunks = mutableListOf<WriterChunk>()
     val lines = mutableListOf<WriterLine>()
     var index = 0
@@ -29,6 +21,7 @@ internal fun parseBlockContent(
     var startChunkIndex = 0
 
     fun finishLine(newLineIndex: Int) {
+        if (newLineIndex == lineTextIndex) return
         lines.add(WriterLine(
             blockTextIndex = lineTextIndex,
             length = newLineIndex - lineTextIndex,
