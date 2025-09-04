@@ -21,9 +21,7 @@ internal class WriterModel(
         state.value = block(state.value)
     }
 
-    private var cursorTarget = 0
-
-    fun updateContent(text: String, blockWidthPx: Int) {
+    fun updateContent(text: String, cursorIndex: Int? = null, blockWidthPx: Int = stateNow.blockWidthPx) {
         if (text == stateNow.text && blockWidthPx == stateNow.blockWidthPx) return
 
         var textIndex = 0
@@ -39,24 +37,45 @@ internal class WriterModel(
         val nextState = stateNow.copy(text = text, blocks = blocks, blockWidthPx = blockWidthPx)
 
         setState {
-            if (cursorTarget != nextState.cursor.textIndex) {
-                nextState.moveCursorToIndex(cursorTarget - stateNow.cursor.textIndex, ruler, style, spacePx)
-            } else nextState
+            nextState.copy(
+                cursor = cursorIndex?.let { nextState.setCursorAtIndex(it, ruler, style, spacePx) } ?: nextState.cursor
+            )
         }
     }
 
     fun moveCursor(delta: Int, isSelection: Boolean) {
+        val textIndex = stateNow.cursor.textIndex + delta
         val selectionCursor = provideSelectionCursor(isSelection)
-        setState { stateNow.moveCursorToIndex(delta, ruler, style, spacePx).copy(selectionCursor = selectionCursor) }
+        val cursor = stateNow.setCursorAtIndex(textIndex, ruler, style, spacePx)
+        setState { it.copy(cursor = cursor, selectionCursor = selectionCursor) }
     }
 
-    fun targetCursor(delta: Int) {
-        cursorTarget = stateNow.cursor.textIndex + delta
+    fun moveCursorLine(lineDelta: Int, isSelection: Boolean) {
+        val selectionCursor = provideSelectionCursor(isSelection)
+        val cursor = stateNow.moveCursorLine(lineDelta, ruler, style, spacePx)
+        setState { it.copy(cursor = cursor, selectionCursor = selectionCursor) }
     }
 
-    fun moveCursorLine(delta: Int, isSelection: Boolean) {
-        val selectionCursor = provideSelectionCursor(isSelection)
-        setState { it.moveCursorLine(delta, ruler, style, spacePx).copy(selectionCursor = selectionCursor) }
+    fun addTextAtCursor(value: String) {
+        val selection = stateNow.selection
+        val text = selection?.let {
+            setState { state -> state.copy(selectionCursor = null) }
+            stateNow.text.removeRange(it.start.textIndex, it.end.textIndex)
+        } ?: stateNow.text
+        val cursorIndex = selection?.start?.textIndex ?: stateNow.cursor.textIndex
+        val modifiedText = text.insertAt(cursorIndex, value)
+        updateContent(modifiedText, cursorIndex + value.length)
+    }
+
+    fun cutSelectionText() {
+        val selection = stateNow.selection ?: return
+        val text = stateNow.text.removeRange(selection.start.textIndex, selection.end.textIndex)
+        setState { state -> state.copy(selectionCursor = null) }
+        updateContent(text, selection.start.textIndex)
+    }
+
+    fun setCursor(cursor: CursorState, selectionCursor: CursorState?) {
+        setState { it.copy(cursor = cursor, selectionCursor = selectionCursor) }
     }
 
     private fun provideSelectionCursor(isSelection: Boolean) = if (isSelection) {
@@ -68,19 +87,21 @@ internal class WriterModel(
 internal data class WriterState(
     val text: String = "",
     val blocks: List<WriterBlock> = listOf(WriterBlock.Empty),
-    val cursor: WriterCursor = WriterCursor.Home,
+    val cursor: CursorState = CursorState.Home,
     // val selection: Selection? = null,
     val blockWidthPx: Int = 0,
-    val selectionCursor: WriterCursor? = null
+    val selectionCursor: CursorState? = null
 ) {
     val selection get() = when {
         selectionCursor == null -> null
         selectionCursor.textIndex > cursor.textIndex -> Selection(cursor, selectionCursor)
         else -> Selection(selectionCursor, cursor)
     }
+
+    val selectedText get() = selection?.let { text.substring(it.start.textIndex, it.end.textIndex) }
 }
 
-internal data class WriterCursor(
+internal data class CursorState(
     val textIndex: Int,
     val blockIndex: Int,
     val lineIndex: Int,
@@ -89,7 +110,7 @@ internal data class WriterCursor(
     val preferredOffsetX: Int
 ) {
     companion object {
-        val Home = WriterCursor(0, 0, 0, 0, 0, 0)
+        val Home = CursorState(0, 0, 0, 0, 0, 0)
     }
 }
 
@@ -137,8 +158,8 @@ internal data class WriterLine(
 }
 
 internal data class Selection(
-    val start: WriterCursor,
-    val end: WriterCursor
+    val start: CursorState,
+    val end: CursorState
 )
 
 internal fun WriterState.moveCursorLine(
@@ -146,13 +167,13 @@ internal fun WriterState.moveCursorLine(
     ruler: TextMeasurer,
     style: TextStyle,
     spacePx: Int
-): WriterState {
+): CursorState {
     require(abs(delta) == 1) { "line cursor delta must be 1 or -1" }
     val blocks = blocks
     val block = blocks[cursor.blockIndex]
     val newLineIndex = cursor.lineIndex + delta
     val textIndex = if (newLineIndex < 0) {
-        if (cursor.blockIndex == 0) return copy(cursor = WriterCursor.Home)
+        if (cursor.blockIndex == 0) return CursorState.Home
         val block = blocks[cursor.blockIndex - 1]
         val line = block.lines.last()
         findNearestTextIndex(block.blockIndex, line.lineIndex, cursor.preferredOffsetX, ruler, style)
@@ -174,7 +195,7 @@ internal fun WriterState.createCursorAtIndex(
     style: TextStyle,
     spacePx: Int,
     setPreferred: Boolean
-): WriterState {
+): CursorState {
     val block = blocks.first { it.endTextIndex >= textIndex }
     val blockTextIndex = textIndex - block.textIndex
     val line = block.lines.firstOrNull { it.endBlockTextIndex >= blockTextIndex }
@@ -190,25 +211,23 @@ internal fun WriterState.createCursorAtIndex(
         offsetX += lineChunk.textLayout.size.width + spacePx
         offsetIndex = lineChunk.blockTextIndex
     }
-    return copy(
-        cursor = WriterCursor(
-            textIndex = textIndex,
-            blockIndex = block.blockIndex,
-            lineIndex = line?.lineIndex ?: 0,
-            chunkIndex = chunk?.chunkIndex ?: 0,
-            offsetX = offsetX,
-            preferredOffsetX = if (setPreferred) offsetX else cursor.preferredOffsetX
-        )
+    return CursorState(
+        textIndex = textIndex,
+        blockIndex = block.blockIndex,
+        lineIndex = line?.lineIndex ?: 0,
+        chunkIndex = chunk?.chunkIndex ?: 0,
+        offsetX = offsetX,
+        preferredOffsetX = if (setPreferred) offsetX else cursor.preferredOffsetX
     )
 }
 
-internal fun WriterState.moveCursorToIndex(
-    delta: Int,
+internal fun WriterState.setCursorAtIndex(
+    textIndex: Int,
     ruler: TextMeasurer,
     style: TextStyle,
     spacePx: Int
-): WriterState {
-    val index = (cursor.textIndex + delta).coerceIn(0, text.length)
+): CursorState {
+    val index = (textIndex).coerceIn(0, text.length)
     return createCursorAtIndex(index, ruler, style, spacePx, true)
 }
 
@@ -223,7 +242,7 @@ internal fun WriterState.findNearestTextIndex(
     val chunk = block.chunks.firstOrNull {
         it.lineIndex == lineIndex && it.endOffsetX >= targetX
     } ?: block.chunks.last { it.lineIndex == lineIndex }
-    if (targetX >= chunk.endOffsetX) return chunk.endBlockTextIndex
+    if (targetX >= chunk.endOffsetX) return block.textIndex + chunk.endBlockTextIndex
     var blockTextIndex = chunk.blockTextIndex
     var lastSubWidth = 0
     while (blockTextIndex < chunk.endBlockTextIndex) {
@@ -239,4 +258,14 @@ internal fun WriterState.findNearestTextIndex(
         blockTextIndex++
     }
     return block.textIndex + blockTextIndex
+}
+
+fun String.insertAt(i: Int, text: String): String =
+    StringBuilder(this).insert(i, text).toString()
+
+fun String.removeRange(startIndex: Int, endIndex: Int): String {
+    require(startIndex in 0..length && endIndex in startIndex..length) {
+        "Invalid range: $startIndex..$endIndex for length $length"
+    }
+    return substring(0, startIndex) + substring(endIndex)
 }

@@ -22,7 +22,6 @@ fun ZenWriterScreen(
             Section {
                 Writer(
                     text = state.content,
-                    onWord = viewModel::onWord,
                     onValueChange = viewModel::setContent
                 )
             }

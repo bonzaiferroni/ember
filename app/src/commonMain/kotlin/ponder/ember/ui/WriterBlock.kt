@@ -35,7 +35,7 @@ import kotlin.random.Random
 @Composable
 internal fun WriterBlock(
     block: WriterBlock,
-    cursor: WriterCursor?,
+    cursor: CursorState?,
     selection: Selection?,
     spacePx: IntSize,
 ) {
