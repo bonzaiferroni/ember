@@ -4,9 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,13 +18,13 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.dp
 import pondui.ui.controls.LazyColumn
 import pondui.ui.theme.Pond
 
@@ -54,6 +52,8 @@ fun Writer(
         onValueChange(text.insertAt(pos, char))
     }
 
+    val selection = state.selection
+
     LazyColumn(
         gap = 1,
         modifier = Modifier.onGloballyPositioned { layout -> blockWidthPx = layout.size.width  }
@@ -69,16 +69,16 @@ fun Writer(
 
                 when (event.key) {
                     Key.Backspace -> {
-                        model.moveCursor(-1)
+                        model.moveCursor(-1, event.isShiftPressed)
                         onValueChange(text.dropLast(1))
                     }
-                    Key.DirectionLeft -> model.moveCursor(-1)
-                    Key.DirectionRight -> model.moveCursor(1)
+                    Key.DirectionLeft -> model.moveCursor(-1, event.isShiftPressed)
+                    Key.DirectionRight -> model.moveCursor(1, event.isShiftPressed)
                     Key.Enter -> addCharacter('\n')
-                    Key.MoveEnd -> model.moveCursor(text.length - cursorIndex)
-                    Key.MoveHome -> model.moveCursor(-cursorIndex)
-                    Key.DirectionUp -> model.moveCursorLine(-1)
-                    Key.DirectionDown -> model.moveCursorLine(1)
+                    Key.MoveEnd -> model.moveCursor(text.length - cursorIndex, event.isShiftPressed)
+                    Key.MoveHome -> model.moveCursor(-cursorIndex, event.isShiftPressed)
+                    Key.DirectionUp -> model.moveCursorLine(-1, event.isShiftPressed)
+                    Key.DirectionDown -> model.moveCursorLine(1, event.isShiftPressed)
                     else -> isConsumed = false
                 }
 
@@ -100,8 +100,9 @@ fun Writer(
         items(state.blocks) { block ->
             val isCursorPresent = isFocused && cursorIndex >= block.textIndex && cursorIndex <= block.endTextIndex
             WriterBlock(
-                content = block,
+                block = block,
                 cursor = state.cursor.takeIf { isCursorPresent },
+                selection = state.selection,
                 spacePx = spacePx
             )
         }

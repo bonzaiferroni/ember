@@ -24,19 +24,19 @@ internal fun parseBlockContent(
     val lines = mutableListOf<WriterLine>()
     var index = 0
     var offsetX = 0
-    var lineIndex = 0
+    var lineTextIndex = 0
     var lineChunkCount = 0
     var startChunkIndex = 0
 
     fun finishLine(newLineIndex: Int) {
         lines.add(WriterLine(
-            textIndex = lineIndex,
-            length = newLineIndex - lineIndex,
+            blockTextIndex = lineTextIndex,
+            length = newLineIndex - lineTextIndex,
             chunkIndex = startChunkIndex,
             chunkCount = lineChunkCount,
             lineIndex = lines.size
         ))
-        lineIndex = newLineIndex
+        lineTextIndex = newLineIndex
         lineChunkCount = 0
         startChunkIndex = chunks.size
     }

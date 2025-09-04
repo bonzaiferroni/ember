@@ -9,9 +9,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -33,19 +34,53 @@ import kotlin.random.Random
 
 @Composable
 internal fun WriterBlock(
-    content: WriterBlock,
+    block: WriterBlock,
     cursor: WriterCursor?,
+    selection: Selection?,
     spacePx: IntSize,
 ) {
     val density = LocalDensity.current
     val spaceDp = with(density) { DpSize(spacePx.width.toDp(), spacePx.height.toDp()) }
-    val lines = content.lines;
-    val chunks = content.chunks
+    val lines = block.lines
+    val chunks = block.chunks
+
+    val selectionLines = selection?.let { selection ->
+        lines.mapNotNull { line ->
+            val lineTextIndex = block.textIndex + line.blockTextIndex
+            val lineEndTextIndex = block.textIndex + line.endBlockTextIndex
+            if (selection.start.textIndex > lineEndTextIndex || selection.end.textIndex < lineTextIndex)
+                return@mapNotNull null
+            val startX = if (selection.start.textIndex > lineTextIndex) selection.start.offsetX else 0
+            val endX = if (selection.end.textIndex < lineEndTextIndex) selection.end.offsetX
+            else chunks.last { it.lineIndex == line.lineIndex }.endOffsetX
+            val topLeft = with (density) { DpOffset(
+                x = startX.toDp(),
+                y = (spacePx.height * (selection.start.lineIndex + line.lineIndex)).toDp()
+            ) }
+            val size = with (density) {
+                DpSize(
+                    width = (endX - startX).toDp(),
+                    height = spacePx.height.toDp()
+                )
+            }
+            Pair(topLeft, size)
+        }
+    }
+
+    val selectionColor = Color.Cyan.copy(.5f)
 
     Box(
         modifier = Modifier.fillMaxWidth()
             .height(maxOf(spaceDp.height * lines.size, spaceDp.height))
     ) {
+        selectionLines?.forEach { (topLeft, size) ->
+            Box(
+                modifier = Modifier.offset(topLeft.x, topLeft.y)
+                    .background(selectionColor)
+                    .size(size)
+            )
+        }
+
         chunks.forEachIndexed { chunkIndex, chunk ->
             val text = chunk.text;
             val textLayout = chunk.textLayout

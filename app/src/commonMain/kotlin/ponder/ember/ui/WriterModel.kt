@@ -45,25 +45,40 @@ internal class WriterModel(
         }
     }
 
-    fun moveCursor(delta: Int) {
-        setState { it.moveCursorToIndex(delta, ruler, style, spacePx) }
+    fun moveCursor(delta: Int, isSelection: Boolean) {
+        val selectionCursor = provideSelectionCursor(isSelection)
+        setState { stateNow.moveCursorToIndex(delta, ruler, style, spacePx).copy(selectionCursor = selectionCursor) }
     }
 
     fun targetCursor(delta: Int) {
         cursorTarget = stateNow.cursor.textIndex + delta
     }
 
-    fun moveCursorLine(delta: Int) {
-        setState { it.moveCursorLine(delta, ruler, style, spacePx) }
+    fun moveCursorLine(delta: Int, isSelection: Boolean) {
+        val selectionCursor = provideSelectionCursor(isSelection)
+        setState { it.moveCursorLine(delta, ruler, style, spacePx).copy(selectionCursor = selectionCursor) }
     }
+
+    private fun provideSelectionCursor(isSelection: Boolean) = if (isSelection) {
+        if (stateNow.selectionCursor == null) stateNow.cursor
+        else stateNow.selectionCursor
+    } else null
 }
 
 internal data class WriterState(
     val text: String = "",
     val blocks: List<WriterBlock> = listOf(WriterBlock.Empty),
     val cursor: WriterCursor = WriterCursor.Home,
+    // val selection: Selection? = null,
     val blockWidthPx: Int = 0,
-)
+    val selectionCursor: WriterCursor? = null
+) {
+    val selection get() = when {
+        selectionCursor == null -> null
+        selectionCursor.textIndex > cursor.textIndex -> Selection(cursor, selectionCursor)
+        else -> Selection(selectionCursor, cursor)
+    }
+}
 
 internal data class WriterCursor(
     val textIndex: Int,
@@ -102,7 +117,7 @@ internal data class WriterChunk(
     val offsetX: Int,
     val isContinued: Boolean,
 ) {
-    val endTextIndex get() = blockTextIndex + text.length
+    val endBlockTextIndex get() = blockTextIndex + text.length
     val endOffsetX get() = offsetX + textLayout.size.width
 
     companion object {
@@ -111,15 +126,20 @@ internal data class WriterChunk(
 }
 
 internal data class WriterLine(
-    val textIndex: Int,
+    val blockTextIndex: Int,
     val lineIndex: Int,
     val length: Int,
     val chunkIndex: Int,
     val chunkCount: Int,
 ) {
     val endChunkIndex get() = chunkIndex + chunkCount
-    val endTextIndex get() = textIndex + length
+    val endBlockTextIndex get() = blockTextIndex + length
 }
+
+internal data class Selection(
+    val start: WriterCursor,
+    val end: WriterCursor
+)
 
 internal fun WriterState.moveCursorLine(
     delta: Int,
@@ -157,9 +177,9 @@ internal fun WriterState.createCursorAtIndex(
 ): WriterState {
     val block = blocks.first { it.endTextIndex >= textIndex }
     val blockTextIndex = textIndex - block.textIndex
-    val line = block.lines.firstOrNull { it.endTextIndex >= blockTextIndex }
-    val lineTextIndex = line?.textIndex ?: blockTextIndex
-    val chunk = block.chunks.firstOrNull { it.endTextIndex >= blockTextIndex }
+    val line = block.lines.firstOrNull { it.endBlockTextIndex >= blockTextIndex }
+    val lineTextIndex = line?.blockTextIndex ?: blockTextIndex
+    val chunk = block.chunks.firstOrNull { it.endBlockTextIndex >= blockTextIndex }
     var chunkIndex = chunk?.chunkIndex ?: 0
     var offsetX = chunk?.let {
         ruler.measure(chunk.text.take(blockTextIndex - chunk.blockTextIndex), style).size.width
@@ -203,10 +223,10 @@ internal fun WriterState.findNearestTextIndex(
     val chunk = block.chunks.firstOrNull {
         it.lineIndex == lineIndex && it.endOffsetX >= targetX
     } ?: block.chunks.last { it.lineIndex == lineIndex }
-    if (targetX >= chunk.endOffsetX) return chunk.endTextIndex
+    if (targetX >= chunk.endOffsetX) return chunk.endBlockTextIndex
     var blockTextIndex = chunk.blockTextIndex
     var lastSubWidth = 0
-    while (blockTextIndex < chunk.endTextIndex) {
+    while (blockTextIndex < chunk.endBlockTextIndex) {
         val nextCharIndex = blockTextIndex + 1 - chunk.blockTextIndex
         val subWidth = ruler.measure(chunk.text.take(nextCharIndex), style).size.width
         if (subWidth + chunk.offsetX > targetX) {
