@@ -17,11 +17,13 @@ internal class WriterModel(
     internal val stateNow get() = state.value
     val stateFlow: StateFlow<WriterState> = state
 
+    // private val history: MutableList<String> =
+
     private fun setState(block: (WriterState) -> WriterState) {
         state.value = block(state.value)
     }
 
-    fun updateContent(text: String, cursorIndex: Int? = null, blockWidthPx: Int = stateNow.blockWidthPx) {
+    fun updateContent(text: String, caretIndex: Int? = null, blockWidthPx: Int = stateNow.blockWidthPx) {
         if (text == stateNow.text && blockWidthPx == stateNow.blockWidthPx) return
 
         var textIndex = 0
@@ -38,70 +40,70 @@ internal class WriterModel(
 
         setState {
             nextState.copy(
-                cursor = cursorIndex?.let { nextState.setCursorAtIndex(it, ruler, style, spacePx) } ?: nextState.cursor
+                caret = caretIndex?.let { nextState.setCaretAtIndex(it, ruler, style, spacePx) } ?: nextState.caret
             )
         }
     }
 
-    fun moveCursor(delta: Int, isSelection: Boolean) {
-        val textIndex = stateNow.cursor.textIndex + delta
-        val selectionCursor = provideSelectionCursor(isSelection)
-        val cursor = stateNow.setCursorAtIndex(textIndex, ruler, style, spacePx)
-        setState { it.copy(cursor = cursor, selectionCursor = selectionCursor) }
+    fun moveCaret(delta: Int, isSelection: Boolean) {
+        val textIndex = stateNow.caret.textIndex + delta
+        val selectionCaret = provideSelectionCaret(isSelection)
+        val caret = stateNow.setCaretAtIndex(textIndex, ruler, style, spacePx)
+        setState { it.copy(caret = caret, selectCaret = selectionCaret) }
     }
 
-    fun moveCursorLine(lineDelta: Int, isSelection: Boolean) {
-        val selectionCursor = provideSelectionCursor(isSelection)
-        val cursor = stateNow.moveCursorLine(lineDelta, ruler, style, spacePx)
-        setState { it.copy(cursor = cursor, selectionCursor = selectionCursor) }
+    fun moveCaretLine(lineDelta: Int, isSelection: Boolean) {
+        val selectionCaret = provideSelectionCaret(isSelection)
+        val caret = stateNow.moveCaretLine(lineDelta, ruler, style, spacePx)
+        setState { it.copy(caret = caret, selectCaret = selectionCaret) }
     }
 
-    fun addTextAtCursor(value: String) {
+    fun addTextAtCaret(value: String) {
         val selection = stateNow.selection
         val text = selection?.let {
-            setState { state -> state.copy(selectionCursor = null) }
+            setState { state -> state.copy(selectCaret = null) }
             stateNow.text.removeRange(it.start.textIndex, it.end.textIndex)
         } ?: stateNow.text
-        val cursorIndex = selection?.start?.textIndex ?: stateNow.cursor.textIndex
-        val modifiedText = text.insertAt(cursorIndex, value)
-        updateContent(modifiedText, cursorIndex + value.length)
+        val caretIndex = selection?.start?.textIndex ?: stateNow.caret.textIndex
+        val modifiedText = text.insertAt(caretIndex, value)
+        updateContent(modifiedText, caretIndex + value.length)
     }
 
     fun cutSelectionText() {
         val selection = stateNow.selection ?: return
         val text = stateNow.text.removeRange(selection.start.textIndex, selection.end.textIndex)
-        setState { state -> state.copy(selectionCursor = null) }
+        setState { state -> state.copy(selectCaret = null) }
         updateContent(text, selection.start.textIndex)
     }
 
-    fun setCursor(cursor: CursorState, selectionCursor: CursorState?) {
-        setState { it.copy(cursor = cursor, selectionCursor = selectionCursor) }
+    fun setCaret(caret: Caret, selectCaret: Caret?) {
+        setState { it.copy(caret = caret, selectCaret = selectCaret) }
     }
 
-    private fun provideSelectionCursor(isSelection: Boolean) = if (isSelection) {
-        if (stateNow.selectionCursor == null) stateNow.cursor
-        else stateNow.selectionCursor
+    private fun provideSelectionCaret(isSelection: Boolean) = if (isSelection) {
+        if (stateNow.selectCaret == null) stateNow.caret
+        else stateNow.selectCaret
     } else null
 }
 
 internal data class WriterState(
     val text: String = "",
     val blocks: List<WriterBlock> = listOf(WriterBlock.Empty),
-    val cursor: CursorState = CursorState.Home,
+    val caret: Caret = Caret.Home,
     // val selection: Selection? = null,
     val blockWidthPx: Int = 0,
-    val selectionCursor: CursorState? = null
+    val selectCaret: Caret? = null
 ) {
     val selection get() = when {
-        selectionCursor == null -> null
-        selectionCursor.textIndex > cursor.textIndex -> Selection(cursor, selectionCursor)
-        else -> Selection(selectionCursor, cursor)
+        selectCaret == null -> null
+        selectCaret.textIndex > caret.textIndex -> Selection(caret, selectCaret)
+        else -> Selection(selectCaret, caret)
     }
 
     val selectedText get() = selection?.let { text.substring(it.start.textIndex, it.end.textIndex) }
 }
 
-internal data class CursorState(
+internal data class Caret(
     val textIndex: Int,
     val blockIndex: Int,
     val lineIndex: Int,
@@ -110,7 +112,7 @@ internal data class CursorState(
     val preferredOffsetX: Int
 ) {
     companion object {
-        val Home = CursorState(0, 0, 0, 0, 0, 0)
+        val Home = Caret(0, 0, 0, 0, 0, 0)
     }
 }
 
@@ -158,44 +160,44 @@ internal data class WriterLine(
 }
 
 internal data class Selection(
-    val start: CursorState,
-    val end: CursorState
+    val start: Caret,
+    val end: Caret
 )
 
-internal fun WriterState.moveCursorLine(
+internal fun WriterState.moveCaretLine(
     delta: Int,
     ruler: TextMeasurer,
     style: TextStyle,
     spacePx: Int
-): CursorState {
-    require(abs(delta) == 1) { "line cursor delta must be 1 or -1" }
+): Caret {
+    require(abs(delta) == 1) { "line caret delta must be 1 or -1" }
     val blocks = blocks
-    val block = blocks[cursor.blockIndex]
-    val newLineIndex = cursor.lineIndex + delta
+    val block = blocks[caret.blockIndex]
+    val newLineIndex = caret.lineIndex + delta
     val textIndex = if (newLineIndex < 0) {
-        if (cursor.blockIndex == 0) return CursorState.Home
-        val block = blocks[cursor.blockIndex - 1]
+        if (caret.blockIndex == 0) return Caret.Home
+        val block = blocks[caret.blockIndex - 1]
         val line = block.lines.last()
-        findNearestTextIndex(block.blockIndex, line.lineIndex, cursor.preferredOffsetX, ruler, style)
+        findNearestTextIndex(block.blockIndex, line.lineIndex, caret.preferredOffsetX, ruler, style)
     } else if (newLineIndex >= block.lines.size) {
-        if (cursor.blockIndex + 1 >= blocks.size) {
+        if (caret.blockIndex + 1 >= blocks.size) {
             text.length
         } else {
-            findNearestTextIndex(cursor.blockIndex + 1, 0, cursor.preferredOffsetX, ruler, style)
+            findNearestTextIndex(caret.blockIndex + 1, 0, caret.preferredOffsetX, ruler, style)
         }
     } else {
-        findNearestTextIndex(cursor.blockIndex, newLineIndex, cursor.preferredOffsetX, ruler, style)
+        findNearestTextIndex(caret.blockIndex, newLineIndex, caret.preferredOffsetX, ruler, style)
     }
-    return createCursorAtIndex(textIndex, ruler, style, spacePx, false)
+    return createCaretAtIndex(textIndex, ruler, style, spacePx, false)
 }
 
-internal fun WriterState.createCursorAtIndex(
+internal fun WriterState.createCaretAtIndex(
     textIndex: Int,
     ruler: TextMeasurer,
     style: TextStyle,
     spacePx: Int,
     setPreferred: Boolean
-): CursorState {
+): Caret {
     val block = blocks.first { it.endTextIndex >= textIndex }
     val blockTextIndex = textIndex - block.textIndex
     val line = block.lines.firstOrNull { it.endBlockTextIndex >= blockTextIndex }
@@ -211,24 +213,24 @@ internal fun WriterState.createCursorAtIndex(
         offsetX += lineChunk.textLayout.size.width + spacePx
         offsetIndex = lineChunk.blockTextIndex
     }
-    return CursorState(
+    return Caret(
         textIndex = textIndex,
         blockIndex = block.blockIndex,
         lineIndex = line?.lineIndex ?: 0,
         chunkIndex = chunk?.chunkIndex ?: 0,
         offsetX = offsetX,
-        preferredOffsetX = if (setPreferred) offsetX else cursor.preferredOffsetX
+        preferredOffsetX = if (setPreferred) offsetX else caret.preferredOffsetX
     )
 }
 
-internal fun WriterState.setCursorAtIndex(
+internal fun WriterState.setCaretAtIndex(
     textIndex: Int,
     ruler: TextMeasurer,
     style: TextStyle,
     spacePx: Int
-): CursorState {
+): Caret {
     val index = (textIndex).coerceIn(0, text.length)
-    return createCursorAtIndex(index, ruler, style, spacePx, true)
+    return createCaretAtIndex(index, ruler, style, spacePx, true)
 }
 
 internal fun WriterState.findNearestTextIndex(

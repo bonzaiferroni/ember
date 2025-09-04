@@ -43,16 +43,10 @@ fun Writer(
     val spacePx = rememberSpacePx(style)
     val model = remember { WriterModel(ruler, style, spacePx.width) }
     val state by model.stateFlow.collectAsState()
-    val cursorIndex = state.cursor.textIndex
+    val caretIndex = state.caret.textIndex
     val clipBoard = LocalClipboardManager.current
     val focusRequester = remember { FocusRequester() }
     var isFocused by remember { mutableStateOf(false) }
-
-//    fun addCharacter(char: Char) {
-//        val pos = minOf(text.length, cursorIndex)
-//        model.targetCursor(1)
-//        onValueChange(text.insertAt(pos, char))
-//    }
 
     LaunchedEffect(text, blockWidthPx) {
         model.updateContent(text, blockWidthPx = blockWidthPx)
@@ -81,33 +75,33 @@ fun Writer(
                 when (event.key) {
                     Key.Backspace -> {
                         if (selection == null) {
-                            model.moveCursor(-1, true)
+                            model.moveCaret(-1, true)
                         }
                         model.cutSelectionText()
                     }
                     Key.DirectionLeft -> {
                         if (!event.isShiftPressed && selection != null) {
-                            model.setCursor(selection.start, null)
+                            model.setCaret(selection.start, null)
                         } else {
-                            model.moveCursor(-1, event.isShiftPressed)
+                            model.moveCaret(-1, event.isShiftPressed)
                         }
                     }
                     Key.DirectionRight -> {
                         if (!event.isShiftPressed && selection != null) {
-                            model.setCursor(selection.end, null)
+                            model.setCaret(selection.end, null)
                         } else {
-                            model.moveCursor(1, event.isShiftPressed)
+                            model.moveCaret(1, event.isShiftPressed)
                         }
                     }
-                    Key.Enter -> model.addTextAtCursor("\n")
-                    Key.MoveEnd -> model.moveCursor(text.length - cursorIndex, event.isShiftPressed)
-                    Key.MoveHome -> model.moveCursor(-cursorIndex, event.isShiftPressed)
-                    Key.DirectionUp -> model.moveCursorLine(-1, event.isShiftPressed)
-                    Key.DirectionDown -> model.moveCursorLine(1, event.isShiftPressed)
+                    Key.Enter -> model.addTextAtCaret("\n")
+                    Key.MoveEnd -> model.moveCaret(text.length - caretIndex, event.isShiftPressed)
+                    Key.MoveHome -> model.moveCaret(-caretIndex, event.isShiftPressed)
+                    Key.DirectionUp -> model.moveCaretLine(-1, event.isShiftPressed)
+                    Key.DirectionDown -> model.moveCaretLine(1, event.isShiftPressed)
                     Key.A -> {
                         if (event.isCtrlPressed) {
-                            model.moveCursor(-cursorIndex, false)
-                            model.moveCursor(text.length, true)
+                            model.moveCaret(-caretIndex, false)
+                            model.moveCaret(text.length, true)
                         } else isConsumed = false
                     }
                     Key.X -> {
@@ -124,7 +118,7 @@ fun Writer(
                     Key.V -> {
                         if (event.isCtrlPressed) {
                             val text = clipBoard.getText()?.text
-                            if (text != null) model.addTextAtCursor(text)
+                            if (text != null) model.addTextAtCaret(text)
                         } else isConsumed = false
                     }
                     else -> isConsumed = false
@@ -135,7 +129,7 @@ fun Writer(
 
                 val char = event.utf16CodePoint.toChar()
                 if (!isConsumed && !char.isISOControl()) {
-                    model.addTextAtCursor(char.toString())
+                    model.addTextAtCaret(char.toString())
                     isConsumed = true
                 }
                 isConsumed
@@ -146,12 +140,12 @@ fun Writer(
             ) { focusRequester.requestFocus(); println("focused") }
     ) {
         items(state.blocks) { block ->
-            val isCursorPresent = isFocused && cursorIndex >= block.textIndex && cursorIndex <= block.endTextIndex
+            val isCaretPresent = isFocused && caretIndex >= block.textIndex && caretIndex <= block.endTextIndex
             val isSelectionPresent = selection != null && selection.start.textIndex < block.endTextIndex
                     && selection.end.textIndex > block.textIndex
             WriterBlock(
                 block = block,
-                cursor = state.cursor.takeIf { isCursorPresent },
+                caret = state.caret.takeIf { isCaretPresent },
                 selection = selection.takeIf { isSelectionPresent },
                 spacePx = spacePx
             )

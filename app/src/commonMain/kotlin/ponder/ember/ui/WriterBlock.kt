@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,7 +27,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -39,7 +37,7 @@ import kotlin.random.Random
 @Composable
 internal fun WriterBlock(
     block: WriterBlock,
-    cursor: CursorState?,
+    caret: Caret?,
     selection: Selection?,
     spacePx: IntSize,
 ) {
@@ -115,48 +113,44 @@ internal fun WriterBlock(
                     }
             )
         }
-        cursor?.let {
+        caret?.let {
             val offsetX = with(density) { it.offsetX.toDp() }
-            val offsetY = (spaceDp.height + lineSpaceDp) * cursor.lineIndex
+            val offsetY = (spaceDp.height + lineSpaceDp) * caret.lineIndex
             // println("offsetX: $offsetX textIndex: ${it.textIndex}")
-            DrawCursor(offsetX, offsetY, spaceDp)
+            DrawCaret(offsetX, offsetY, spaceDp)
         }
     }
 }
 
 @Composable
-internal fun DrawCursor(
+internal fun DrawCaret(
     offsetX: Dp,
     offsetY: Dp,
     spaceDp: DpSize,
 ) {
-    val cursorAlpha = remember { Animatable(1f) }
-
-//    LaunchedEffect(cursorAlpha) {
-//        cursorAlphaCache = cursorAlpha.value
-//    }
+    val caretAlpha = remember { Animatable(1f) }
 
     LaunchedEffect(Unit) {
         val fadeMs = 320
         val holdMs = 90
         while (true) {
             // fade in
-            cursorAlpha.animateTo(
+            caretAlpha.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(durationMillis = fadeMs, easing = FastOutSlowInEasing)
             )
             // slight hold visible
-            cursorAlpha.animateTo(
+            caretAlpha.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(durationMillis = holdMs, easing = LinearEasing)
             )
             // fade out
-            cursorAlpha.animateTo(
+            caretAlpha.animateTo(
                 targetValue = 0f,
                 animationSpec = tween(durationMillis = fadeMs, easing = FastOutSlowInEasing)
             )
             // slight hold hidden
-            cursorAlpha.animateTo(
+            caretAlpha.animateTo(
                 targetValue = 0f,
                 animationSpec = tween(durationMillis = holdMs, easing = LinearEasing)
             )
@@ -167,12 +161,10 @@ internal fun DrawCursor(
         modifier = Modifier.width(1.dp)
             .height(spaceDp.height)
             .offset(x = offsetX, y = offsetY)
-            .graphicsLayer { this.alpha = cursorAlpha.value }
+            .graphicsLayer { this.alpha = caretAlpha.value }
             .background(Color.White)
     )
 }
-
-private var cursorAlphaCache = 0f
 
 @Composable
 fun rememberSpacePx(style: TextStyle): IntSize {
