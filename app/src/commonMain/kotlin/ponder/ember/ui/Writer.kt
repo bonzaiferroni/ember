@@ -81,17 +81,33 @@ fun Writer(
                         model.cutSelectionText()
                     }
                     Key.DirectionLeft -> {
-                        if (!event.isShiftPressed && selection != null) {
+                        val block = state.blocks[caret.blockIndex]
+                        val line = block.lines[caret.lineIndex]
+                        if (caret.blockTextIndex == line.blockTextIndex) {
+                            if (line.lineIndex - 1 >= 0) {
+                                model.moveCaret(0, false, caret.lineIndex - 1)
+                            } else {
+                                model.moveCaret(-1, event.isShiftPressed, null)
+                            }
+                        } else if (!event.isShiftPressed && selection != null) {
                             model.setCaret(selection.start, null)
                         } else {
-                            model.moveCaret(-1, event.isShiftPressed)
+                            model.moveCaret(-1, event.isShiftPressed, caret.lineIndex)
                         }
                     }
                     Key.DirectionRight -> {
-                        if (!event.isShiftPressed && selection != null) {
+                        val block = state.blocks[caret.blockIndex]
+                        val line = block.lines[caret.lineIndex]
+                        if (caret.blockTextIndex == line.endBlockTextIndex) {
+                            if (block.lines.size > line.lineIndex + 1) {
+                                model.moveCaret(0, false, caret.lineIndex + 1)
+                            } else {
+                                model.moveCaret(1, event.isShiftPressed, null)
+                            }
+                        } else if (!event.isShiftPressed && selection != null) {
                             model.setCaret(selection.end, null)
                         } else {
-                            model.moveCaret(1, event.isShiftPressed)
+                            model.moveCaret(1, event.isShiftPressed, caret.lineIndex)
                         }
                     }
                     Key.Enter -> model.addTextAtCaret("\n")
