@@ -43,21 +43,16 @@ internal class BlockParser(
             )
         }
 
-        var segStart = 0
+        var blockTextIndex = 0
         var i = 0
         while (i <= text.length) {
             val atEnd = i == text.length
             val ch = if (!atEnd) text[i] else '\n'
             if (atEnd || ch == ' ') {
-                if (segStart < i) {
-                    parseChunk(segStart, i)
-                }
-                if (!atEnd) {
-                    i++
-                    segStart = i
-                } else {
-                    break
-                }
+                parseChunk(blockTextIndex, i)
+                if (atEnd) { break }
+                i++
+                blockTextIndex = i
             } else {
                 i++
             }
@@ -74,53 +69,21 @@ internal class BlockParser(
         )
     }
 
-    private fun parseChunk(chunkStart: Int, chunkEnd: Int) {
-        if (chunkStart >= chunkEnd) return
-        val chunkText = text.substring(chunkStart, chunkEnd)
+    private fun parseChunk(chunkStartIndex: Int, chunkEndIndex: Int) {
+        val chunkText = text.substring(chunkStartIndex, chunkEndIndex)
         val layout = ruler.measure(chunkText, style)
 
         if (layout.size.width > blockWidthPx) {
-            var subIndex = 0
-            offsetX = 0
-            while (subIndex < chunkText.length) {
-                var endIndex = chunkText.length
-
-                while (endIndex > subIndex) {
-                    val subChunk = chunkText.substring(subIndex, endIndex)
-                    val subLayout = ruler.measure(subChunk, style)
-                    if (subLayout.size.width > blockWidthPx) {
-                        endIndex--
-                    } else {
-                        val isContinued = (subIndex + subChunk.length) < chunkText.length
-                        finishLine(chunkStart + subIndex)
-                        chunks.add(
-                            WriterChunk(
-                                text = chunkText.substring(subIndex, subIndex + subChunk.length),
-                                textLayout = subLayout,
-                                blockTextIndex = chunkStart + subIndex,
-                                isContinued = isContinued,
-                                offsetX = 0,
-                                lineIndex = lines.size,
-                                chunkIndex = chunks.size,
-                            )
-                        )
-                        lineChunkCount = 1
-                        subIndex += subChunk.length
-                        if (!isContinued) {
-                            offsetX += subLayout.size.width + spacePx
-                        }
-                    }
-                }
-            }
+            parseMultiChunk(chunkText, chunkStartIndex)
         } else {
             if (offsetX + layout.size.width > blockWidthPx) {
-                finishLine(chunkStart)
+                finishLine(chunkStartIndex)
             }
             chunks.add(
                 WriterChunk(
                     text = chunkText,
                     textLayout = layout,
-                    blockTextIndex = chunkStart,
+                    blockTextIndex = chunkStartIndex,
                     isContinued = false,
                     offsetX = offsetX,
                     lineIndex = lines.size,
@@ -129,6 +92,41 @@ internal class BlockParser(
             )
             lineChunkCount++
             offsetX += layout.size.width + spacePx
+        }
+    }
+
+    fun parseMultiChunk(chunkText: String, startIndex: Int) {
+        var subIndex = 0
+        offsetX = 0
+        while (subIndex < chunkText.length) {
+            var endIndex = chunkText.length
+
+            while (endIndex > subIndex) {
+                val subChunk = chunkText.substring(subIndex, endIndex)
+                val subLayout = ruler.measure(subChunk, style)
+                if (subLayout.size.width > blockWidthPx) {
+                    endIndex--
+                } else {
+                    val isContinued = (subIndex + subChunk.length) < chunkText.length
+                    finishLine(startIndex + subIndex)
+                    chunks.add(
+                        WriterChunk(
+                            text = chunkText.substring(subIndex, subIndex + subChunk.length),
+                            textLayout = subLayout,
+                            blockTextIndex = startIndex + subIndex,
+                            isContinued = isContinued,
+                            offsetX = 0,
+                            lineIndex = lines.size,
+                            chunkIndex = chunks.size,
+                        )
+                    )
+                    lineChunkCount = 1
+                    subIndex += subChunk.length
+                    if (!isContinued) {
+                        offsetX += subLayout.size.width + spacePx
+                    }
+                }
+            }
         }
     }
 
