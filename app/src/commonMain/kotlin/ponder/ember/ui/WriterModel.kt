@@ -6,6 +6,7 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.datetime.Instant
 import kotlin.math.abs
 
 internal class WriterModel(
@@ -17,7 +18,8 @@ internal class WriterModel(
     internal val stateNow get() = state.value
     val stateFlow: StateFlow<WriterState> = state
 
-    // private val history: MutableList<String> =
+//    private val history: MutableList<WriterState> = mutableListOf()
+//    private var lastHistory: Instant = Instant.DISTANT_PAST
 
     private fun setState(block: (WriterState) -> WriterState) {
         state.value = block(state.value)
@@ -40,15 +42,21 @@ internal class WriterModel(
 
         setState {
             nextState.copy(
-                caret = caretIndex?.let { nextState.setCaretAtIndex(it, ruler, style, spacePx) } ?: nextState.caret
+                caret = caretIndex?.let { nextState.setCaretAtIndex(
+                    textIndex = it,
+                    lineIndex = null,
+                    ruler = ruler,
+                    style = style,
+                    spacePx = spacePx
+                ) } ?: nextState.caret
             )
         }
     }
 
-    fun moveCaret(delta: Int, isSelection: Boolean) {
+    fun moveCaret(delta: Int, isSelection: Boolean, lineIndex: Int? = null) {
         val textIndex = stateNow.caret.textIndex + delta
         val selectionCaret = provideSelectionCaret(isSelection)
-        val caret = stateNow.setCaretAtIndex(textIndex, ruler, style, spacePx)
+        val caret = stateNow.setCaretAtIndex(textIndex, lineIndex, ruler, style, spacePx)
         setState { it.copy(caret = caret, selectCaret = selectionCaret) }
     }
 
@@ -105,6 +113,7 @@ internal data class WriterState(
 
 internal data class Caret(
     val textIndex: Int,
+    val blockTextIndex: Int,
     val blockIndex: Int,
     val lineIndex: Int,
     val chunkIndex: Int,
@@ -112,9 +121,15 @@ internal data class Caret(
     val preferredOffsetX: Int
 ) {
     companion object {
-        val Home = Caret(0, 0, 0, 0, 0, 0)
+        val Home = Caret(0, 0, 0, 0, 0, 0, 0)
     }
 }
+
+internal data class WriterSnapshot(
+    val text: String,
+    val caret: Caret,
+    val selectCaret: Caret
+)
 
 @Stable
 internal data class WriterBlock(
@@ -188,11 +203,12 @@ internal fun WriterState.moveCaretLine(
     } else {
         findNearestTextIndex(caret.blockIndex, newLineIndex, caret.preferredOffsetX, ruler, style)
     }
-    return createCaretAtIndex(textIndex, ruler, style, spacePx, false)
+    return createCaretAtIndex(textIndex, null, ruler, style, spacePx, false)
 }
 
 internal fun WriterState.createCaretAtIndex(
     textIndex: Int,
+    lineIndex: Int?,
     ruler: TextMeasurer,
     style: TextStyle,
     spacePx: Int,
@@ -200,7 +216,7 @@ internal fun WriterState.createCaretAtIndex(
 ): Caret {
     val block = blocks.first { it.endTextIndex >= textIndex }
     val blockTextIndex = textIndex - block.textIndex
-    val line = block.lines.firstOrNull { it.endBlockTextIndex >= blockTextIndex }
+    val line = lineIndex?.let { block.lines[it] } ?: block.lines.firstOrNull { it.endBlockTextIndex >= blockTextIndex }
     val lineTextIndex = line?.blockTextIndex ?: blockTextIndex
     val chunk = block.chunks.firstOrNull { it.endBlockTextIndex >= blockTextIndex }
     var chunkIndex = chunk?.chunkIndex ?: 0
@@ -215,6 +231,7 @@ internal fun WriterState.createCaretAtIndex(
     }
     return Caret(
         textIndex = textIndex,
+        blockTextIndex = blockTextIndex,
         blockIndex = block.blockIndex,
         lineIndex = line?.lineIndex ?: 0,
         chunkIndex = chunk?.chunkIndex ?: 0,
@@ -225,12 +242,13 @@ internal fun WriterState.createCaretAtIndex(
 
 internal fun WriterState.setCaretAtIndex(
     textIndex: Int,
+    lineIndex: Int?,
     ruler: TextMeasurer,
     style: TextStyle,
     spacePx: Int
 ): Caret {
     val index = (textIndex).coerceIn(0, text.length)
-    return createCaretAtIndex(index, ruler, style, spacePx, true)
+    return createCaretAtIndex(index, lineIndex, ruler, style, spacePx, true)
 }
 
 internal fun WriterState.findNearestTextIndex(

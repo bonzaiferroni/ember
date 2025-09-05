@@ -58,6 +58,7 @@ fun Writer(
     }
 
     val selection = state.selection
+    val caret = state.caret
 
     LazyColumn(
         gap = 1,
@@ -94,8 +95,24 @@ fun Writer(
                         }
                     }
                     Key.Enter -> model.addTextAtCaret("\n")
-                    Key.MoveEnd -> model.moveCaret(text.length - caretIndex, event.isShiftPressed)
-                    Key.MoveHome -> model.moveCaret(-caretIndex, event.isShiftPressed)
+                    Key.MoveEnd -> {
+                        val block = state.blocks[caret.blockIndex]
+                        val line = block.lines[caret.lineIndex]
+                        if (caret.blockTextIndex == line.endBlockTextIndex) {
+                            model.moveCaret(text.length - caretIndex, event.isShiftPressed)
+                        } else {
+                            model.moveCaret(line.endBlockTextIndex - caret.blockTextIndex, event.isShiftPressed, caret.lineIndex)
+                        }
+                    }
+                    Key.MoveHome -> {
+                        val block = state.blocks[caret.blockIndex]
+                        val line = block.lines[caret.lineIndex]
+                        if (caret.blockTextIndex == line.blockTextIndex) {
+                            model.moveCaret(-caretIndex, event.isShiftPressed)
+                        } else {
+                            model.moveCaret(line.blockTextIndex - caret.blockTextIndex, event.isShiftPressed, caret.lineIndex)
+                        }
+                    }
                     Key.DirectionUp -> model.moveCaretLine(-1, event.isShiftPressed)
                     Key.DirectionDown -> model.moveCaretLine(1, event.isShiftPressed)
                     Key.A -> {

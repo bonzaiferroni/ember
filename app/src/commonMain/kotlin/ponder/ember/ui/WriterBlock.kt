@@ -47,7 +47,6 @@ internal fun WriterBlock(
     val chunks = block.chunks
     val lineSpaceDp = 1.dp
     val lineSpacePx = with(density) { lineSpaceDp.toPx() }
-    println(lineSpacePx)
 
     val selectionLines = selection?.let { selection ->
         lines.mapNotNull { line ->
@@ -55,9 +54,13 @@ internal fun WriterBlock(
             val lineEndTextIndex = block.textIndex + line.endBlockTextIndex
             if (selection.start.textIndex > lineEndTextIndex || selection.end.textIndex < lineTextIndex)
                 return@mapNotNull null
+            if (selection.start.blockIndex == block.blockIndex) {
+                if (selection.start.lineIndex > line.lineIndex || selection.end.lineIndex < line.lineIndex)
+                    return@mapNotNull null
+            }
             val startX = if (selection.start.textIndex > lineTextIndex) selection.start.offsetX else 0
             val endX = if (selection.end.textIndex < lineEndTextIndex) selection.end.offsetX
-            else chunks.last { it.lineIndex == line.lineIndex }.endOffsetX
+            else chunks.last { it.lineIndex == line.lineIndex }.endOffsetX + spacePx.width
             val topLeft = Offset(
                 x = startX.toFloat(),
                 y = ((spacePx.height + lineSpacePx) * line.lineIndex)
