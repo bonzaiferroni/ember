@@ -54,10 +54,10 @@ internal fun WriterBlock(
             val lineEndTextIndex = block.textIndex + line.endBlockTextIndex
             if (selection.start.textIndex > lineEndTextIndex || selection.end.textIndex < lineTextIndex)
                 return@mapNotNull null
-            if (selection.start.blockIndex == block.blockIndex) {
-                if (selection.start.lineIndex > line.lineIndex || selection.end.lineIndex < line.lineIndex)
-                    return@mapNotNull null
-            }
+            if (selection.start.blockIndex == block.blockIndex && selection.start.lineIndex > line.lineIndex)
+                return@mapNotNull null
+            if (selection.end.blockIndex == block.blockIndex && selection.end.lineIndex < line.lineIndex)
+                return@mapNotNull null
             val startX = if (selection.start.textIndex > lineTextIndex) selection.start.offsetX else 0
             val endX = if (selection.end.textIndex < lineEndTextIndex) selection.end.offsetX
             else chunks.last { it.lineIndex == line.lineIndex }.endOffsetX + spacePx.width

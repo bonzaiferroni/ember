@@ -45,19 +45,14 @@ internal class BlockParser(
 
         var blockTextIndex = 0
         var i = 0
-        while (i <= text.length) {
-            val atEnd = i == text.length
-            val ch = if (!atEnd) text[i] else '\n'
-            if (atEnd || ch == ' ') {
-                parseChunk(blockTextIndex, i)
-                if (atEnd) { break }
-                i++
-                blockTextIndex = i
-            } else {
-                i++
-            }
+        while (i < text.length) {
+            val ch = text[i++]
+            if (ch != ' ') continue
+            parseChunk(blockTextIndex, i - 1)
+            blockTextIndex = i
         }
 
+        parseChunk(blockTextIndex, i)
         finishLine(text.length)
 
         return WriterBlock(
@@ -103,16 +98,16 @@ internal class BlockParser(
 
             while (endIndex > subIndex) {
                 val subChunk = chunkText.substring(subIndex, endIndex)
-                val subLayout = ruler.measure(subChunk, style)
-                if (subLayout.size.width > blockWidthPx) {
+                val layout = ruler.measure(subChunk, style)
+                if (layout.size.width > blockWidthPx) {
                     endIndex--
                 } else {
                     val isContinued = (subIndex + subChunk.length) < chunkText.length
                     finishLine(startIndex + subIndex)
                     chunks.add(
                         WriterChunk(
-                            text = chunkText.substring(subIndex, subIndex + subChunk.length),
-                            textLayout = subLayout,
+                            text = subChunk,
+                            textLayout = layout,
                             blockTextIndex = startIndex + subIndex,
                             isContinued = isContinued,
                             offsetX = 0,
@@ -123,7 +118,7 @@ internal class BlockParser(
                     lineChunkCount = 1
                     subIndex += subChunk.length
                     if (!isContinued) {
-                        offsetX += subLayout.size.width + spacePx
+                        offsetX += layout.size.width + spacePx
                     }
                 }
             }
@@ -147,3 +142,5 @@ internal class BlockParser(
         offsetX = 0
     }
 }
+
+private fun Char.isWordCharacter() = isLetterOrDigit() || this == '\''
