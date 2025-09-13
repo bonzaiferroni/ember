@@ -1,0 +1,36 @@
+package ponder.ember.app.ui
+
+import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import compose.icons.TablerIcons
+import compose.icons.tablericons.Plus
+import pondui.ui.controls.Button
+import pondui.ui.controls.Column
+import pondui.ui.controls.LazyScaffold
+import pondui.ui.controls.Scaffold
+import pondui.ui.controls.Text
+import pondui.ui.controls.bottomBarSpacerItem
+import pondui.ui.controls.topBarSpacerItem
+
+@Composable
+fun JournalScreen(
+    viewModel: JournalModel = viewModel { JournalModel() }
+) {
+    val state by viewModel.stateFlow.collectAsState()
+    LazyScaffold {
+
+        items(state.blocks) { block ->
+            Text(block.text)
+        }
+
+        item("content") {
+            Column(1) {
+                BlockField(state.content, onValueChange = viewModel::setContent)
+                Button(TablerIcons.Plus, onClick = viewModel::addBlock)
+            }
+        }
+    }
+}

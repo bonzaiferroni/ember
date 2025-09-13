@@ -8,6 +8,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 kotlin {
@@ -61,6 +63,9 @@ kotlin {
 
             implementation(project(":pondui"))
             implementation(project(":model"))
+
+            implementation(libs.room.runtime)
+            implementation(libs.sqlite.bundled)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
@@ -100,13 +105,24 @@ android {
     }
 }
 
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+dependencies {
+    add("kspCommonMainMetadata", libs.room.compiler)
+    add("kspDesktop", libs.room.compiler)
+    add("kspAndroid", libs.room.compiler)
+    debugImplementation(compose.uiTooling)
+}
+
 dependencies {
     debugImplementation(compose.uiTooling)
 }
 
 compose.desktop {
     application {
-        mainClass = "ponder.ember.MainKt"
+        mainClass = "ponder.ember.app.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)

@@ -24,3 +24,5 @@ captures
 **/appdata.json
 **/appcache.json
 **/users.json
+**/app/schemas/*
+app/my_room*
