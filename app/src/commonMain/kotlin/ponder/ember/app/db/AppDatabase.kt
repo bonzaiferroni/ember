@@ -14,14 +14,16 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Database(
     entities = [
-        BlockEntity::class, BlockEmbedding::class
+        BlockEntity::class, BlockEmbedding::class,
+        DocumentEntity::class,
         // StarEntity::class, GalaxyEntity::class
-    ], version = 1
+    ], version = 9
 )
 @ConstructedBy(AppDatabaseConstructor::class)
 @TypeConverters(Converters::class, FloatArrayConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun getBlockDao(): BlockDao
+    abstract fun getDocumentDao(): DocumentDao
     // abstract fun getStarDao(): StarDao
     // abstract fun getGalaxyDao(): GalaxyDao
 }

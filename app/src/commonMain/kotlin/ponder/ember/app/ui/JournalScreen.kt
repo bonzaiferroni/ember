@@ -10,6 +10,9 @@ import compose.icons.tablericons.Plus
 import pondui.ui.controls.Button
 import pondui.ui.controls.Column
 import pondui.ui.controls.LazyScaffold
+import pondui.ui.controls.MoreMenu
+import pondui.ui.controls.MoreMenuItem
+import pondui.ui.controls.Row
 import pondui.ui.controls.Scaffold
 import pondui.ui.controls.Text
 import pondui.ui.controls.bottomBarSpacerItem
@@ -17,7 +20,7 @@ import pondui.ui.controls.topBarSpacerItem
 
 @Composable
 fun JournalScreen(
-    viewModel: JournalModel = viewModel { JournalModel() }
+    viewModel: JournalModel = viewModel { JournalModel(null) }
 ) {
     val state by viewModel.stateFlow.collectAsState()
     LazyScaffold {
@@ -29,7 +32,12 @@ fun JournalScreen(
         item("content") {
             Column(1) {
                 BlockField(state.content, onValueChange = viewModel::setContent)
-                Button(TablerIcons.Plus, onClick = viewModel::addBlock)
+                Row(1) {
+                    Button(TablerIcons.Plus, onClick = viewModel::addBlock)
+                    MoreMenu {
+                        MoreMenuItem("Import", onClick = viewModel::import)
+                    }
+                }
             }
         }
     }

@@ -26,3 +26,5 @@ captures
 **/users.json
 **/app/schemas/*
 app/my_room*
+app/backup/*
+app/export*

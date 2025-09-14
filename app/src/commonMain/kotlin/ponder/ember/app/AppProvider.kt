@@ -8,5 +8,5 @@ object AppProvider {
     var db: AppDatabase? = null
     var env: Environment? = null
 
-    val appDao by lazy { AppDao(db ?: error("db not initialized")) }
+    val dao by lazy { AppDao(db ?: error("db not initialized")) }
 }

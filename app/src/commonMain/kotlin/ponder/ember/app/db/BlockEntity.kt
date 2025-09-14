@@ -8,15 +8,24 @@ import kabinet.db.TableId
 import kotlinx.datetime.Instant
 import ponder.ember.model.data.Block
 import ponder.ember.model.data.BlockId
+import ponder.ember.model.data.DocumentId
 import ponder.ember.model.data.TagId
 
-@Entity
+@Entity(
+    foreignKeys = [
+        ForeignKey(DocumentEntity::class, ["documentId"], ["documentId"], ForeignKey.CASCADE)
+    ],
+    indices = [
+        Index("documentId")
+    ]
+)
 data class BlockEntity(
     @PrimaryKey
     val blockId: BlockId,
-    // val documentId: DocumentId,
+    val documentId: DocumentId,
     // val label: String?,
     val text: String,
+    val position: Int,
     val createdAt: Instant
 )
 
@@ -45,6 +54,8 @@ value class BlockEmbeddingId(override val value: Long): TableId<Long>
 
 fun Block.toEntity() = BlockEntity(
     blockId = blockId,
+    documentId = documentId,
     text = text,
+    position = position,
     createdAt = createdAt
 )

@@ -9,6 +9,7 @@ import ember.app.generated.resources.Res
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import ponder.ember.app.db.AppDao
 import ponder.ember.app.db.AppDatabase
+import ponder.ember.app.ui.DbBackup
 import pondui.ui.core.PondApp
 import pondui.ui.nav.NavRoute
 import pondui.ui.theme.ProvideTheme
@@ -29,6 +30,7 @@ fun App(
             h4Font = useFamily(Res.font.Inter_18pt_Regular),
         )
     ) {
+        val backup = remember { DbBackup().also { it.start() } }
         // ProvideUserContext { }
         PondApp(
             config = appConfig,
