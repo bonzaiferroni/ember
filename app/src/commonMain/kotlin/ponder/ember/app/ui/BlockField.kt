@@ -2,6 +2,7 @@ package ponder.ember.app.ui
 
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import pondui.ui.theme.Pond
@@ -9,6 +10,7 @@ import pondui.ui.theme.Pond
 @Composable
 fun BlockField(
     text: String,
+    modifier: Modifier = Modifier,
     style: TextStyle = Pond.typo.body,
     onValueChange: (String) -> Unit
 ) {
