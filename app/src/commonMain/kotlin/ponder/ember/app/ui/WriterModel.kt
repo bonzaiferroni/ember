@@ -11,7 +11,8 @@ internal class WriterModel(
     val ruler: TextMeasurer,
     val style: TextStyle,
     val spacePx: Int,
-    val blockParser: BlockParser = BlockParser(ruler, style, spacePx)
+    val onValueChange: (String) -> Unit,
+    val blockParser: BlockParser = BlockParser(ruler, style, spacePx),
 ) {
     private val state = MutableStateFlow(WriterState())
     internal val stateNow get() = state.value
@@ -50,6 +51,7 @@ internal class WriterModel(
                 ) } ?: nextState.caret
             )
         }
+        onValueChange(text)
     }
 
     fun moveCaret(delta: Int, isSelection: Boolean, lineIndex: Int? = null) {

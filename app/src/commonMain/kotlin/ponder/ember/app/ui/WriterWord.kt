@@ -25,13 +25,14 @@ import pondui.ui.theme.Pond
 @Composable
 fun WriterWord(
     word: String,
+    isCaretBlock: Boolean,
     textLayout: TextLayoutResult,
     size: DpSize,
     modifier: Modifier = Modifier
 ) {
     val localColors = Pond.localColors
     var textColor by remember(word) { mutableStateOf(addedWordColor) }
-    val targetColor by animateColorAsState(textColor, animationSpec = tween(durationMillis = 10000))
+    val targetColor by animateColorAsState(if (isCaretBlock) textColor else localColors.content, animationSpec = tween(durationMillis = 10000))
 
     LaunchedEffect(word) {
         textColor = localColors.content

@@ -1,15 +1,13 @@
 package ponder.ember.app.ui
 
-import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.readString
-import io.github.vinceglb.filekit.writeString
 import kabinet.clients.OllamaClient
 import kabinet.utils.cosineDistance
 import kabinet.utils.startOfDay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import ponder.ember.app.AppProvider
 import ponder.ember.app.db.AppDao
 import ponder.ember.app.db.BlockEmbedding
@@ -30,11 +28,10 @@ class JournalModel(
 ) : StateModel<JournalState>() {
     override val state = ModelState(JournalState())
 
-    private var allBlocks: List<Block> = emptyList()
-    private var allDocuments: List<Document> = emptyList()
     private var allEmbeddings: List<BlockEmbedding> = emptyList()
     private var embedding: FloatArray? = null
     private var distances: List<Float> = emptyList()
+    private var initializedBlocks = false
 
     init {
         ioLaunch {
@@ -54,34 +51,46 @@ class JournalModel(
 
             launch {
                 dao.block.flowByDocumentId(documentId).collect { blocks ->
-                    setStateFromMain { state -> state.copy(blocks = blocks.sortedBy { it.position }) }
+                    val content = if (!initializedBlocks) {
+                        initializedBlocks = true
+                        blocks.joinToString("\n") { it.text }
+                    } else stateNow.content
+                    setStateFromMain { state ->
+                        state.copy(blocks = blocks.sortedBy { it.position }, content = content)
+                    }
                 }
             }
         }
     }
 
-    fun loadDocument(documentId: DocumentId?) {
-        ioLaunch {
-            val startOfDay = Clock.startOfDay()
-            val document = documentId?.let { id -> allDocuments.firstOrNull { it.documentId == id } }
-                ?: allDocuments.lastOrNull() { it.label == "Journal" && it.createdAt > startOfDay }
-                ?: Document(
-                    documentId = DocumentId.random(),
-                    label = "Journal",
-                    createdAt = Clock.System.now()
-                ).also { dao.document.insert(it.toEntity()) }
-            val blocks = allBlocks.filter { it.documentId == documentId }
-            setStateFromMain { it.copy(document = document, blocks = blocks) }
-        }
-    }
-
+    private var job: Job? = null
     fun setContent(value: String) {
+        val document = stateNow.document ?: return
+        val now = Clock.System.now()
         setState { it.copy(content = value) }
-        if (value.isBlank()) return
-        ioLaunch {
-            val vector = ollama.embed(value)?.embeddings?.firstOrNull() ?: return@ioLaunch
-            distances = allEmbeddings.map { cosineDistance(vector, it.embedding) }
-            embedding = vector
+
+        job?.cancel()
+        job = ioLaunch {
+            delay(5000)
+
+            val textBlocks = value.split('\n')
+            val blocks = textBlocks.mapIndexed { index, textBlock ->
+                stateNow.blocks.firstOrNull { it.text == textBlock }?.copy(position = index)?.toEntity()
+                    ?: BlockEntity(
+                        blockId = BlockId.random(),
+                        documentId = document.documentId,
+                        text = textBlock,
+                        position = index,
+                        createdAt = now
+                    )
+            }
+
+            dao.block.deleteByIds(stateNow.blocks.filter { b -> blocks.none { it.blockId == b.blockId } }.map { it.blockId})
+            dao.block.upsert(blocks)
+
+            // val vector = ollama.embed(value)?.embeddings?.firstOrNull() ?: return@ioLaunch
+            // distances = allEmbeddings.map { cosineDistance(vector, it.embedding) }
+            // embedding = vector
         }
     }
 
@@ -108,18 +117,7 @@ class JournalModel(
                 )
             )
 
-            // PlatformFile("export.json").writeString(Json.encodeToString(JournalExport(allBlocks)))
-
             setStateFromMain { it.copy(content = "") }
-        }
-    }
-
-    fun import() {
-        val document = stateNow.document ?: return
-        ioLaunch {
-            val export = Json.decodeFromString<JournalExport>(PlatformFile("export.json").readString())
-            dao.block.insert(export.blocks.mapIndexed { index, block ->  block.copy(documentId = document.documentId, position = index).toEntity() })
-            println("imported ${export.blocks.size}")
         }
     }
 }

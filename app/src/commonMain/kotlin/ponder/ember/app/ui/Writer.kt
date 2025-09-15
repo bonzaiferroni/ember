@@ -5,6 +5,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,27 +42,26 @@ fun Writer(
     val style = Pond.typo.body
     val ruler = rememberTextMeasurer()
     val spacePx = rememberSpacePx(style)
-    val model = remember { WriterModel(ruler, style, spacePx.width) }
+    val model = remember { WriterModel(ruler, style, spacePx.width, onValueChange) }
     val state by model.stateFlow.collectAsState()
     val caretIndex = state.caret.textIndex
     val clipBoard = LocalClipboardManager.current
     val focusRequester = remember { FocusRequester() }
     var isFocused by remember { mutableStateOf(false) }
 
-    LaunchedEffect(text, blockWidthPx) {
-        model.updateContent(text, blockWidthPx = blockWidthPx)
-    }
-
-    LaunchedEffect(state.text) {
-        if (state.text != text)
-            onValueChange(state.text)
-    }
+    model.updateContent(text, blockWidthPx = blockWidthPx)
 
     val selection = state.selection
     val caret = state.caret
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(caret.lineIndex, caret.blockIndex) {
+        listState.animateScrollToItem(caret.blockIndex)
+    }
 
     LazyColumn(
         gap = 1,
+        state = listState,
         modifier = Modifier.onGloballyPositioned { layout -> blockWidthPx = layout.size.width  }
             .fillMaxWidth()
             .onFocusChanged { isFocused = it.isFocused }
@@ -167,12 +167,12 @@ fun Writer(
                 }
                 isConsumed
             }
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ) { focusRequester.requestFocus(); println("focused") }
+//            .clickable(
+//                indication = null,
+//                interactionSource = remember { MutableInteractionSource() }
+//            ) { focusRequester.requestFocus(); println("focused") }
     ) {
-        items(state.blocks) { block ->
+        items(state.blocks, { it.blockIndex } ) { block ->
             val isCaretPresent = isFocused && caretIndex >= block.textIndex && caretIndex <= block.endTextIndex
             val isSelectionPresent = selection != null && selection.start.textIndex < block.endTextIndex
                     && selection.end.textIndex > block.textIndex

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.MapColumn
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import androidx.room.Upsert
@@ -23,8 +24,11 @@ interface BlockDao {
     @Insert
     suspend fun insert(vararg embedding: BlockEmbedding): LongArray
 
-    @Upsert
-    suspend fun upsert(vararg block: BlockEntity): LongArray
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(block: BlockEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(blocks: List<BlockEntity>): LongArray
 
     @Update
     suspend fun update(vararg block: BlockEntity): Int
@@ -34,6 +38,9 @@ interface BlockDao {
 
     @Query("DELETE FROM BlockEntity WHERE blockId = :blockId")
     suspend fun deleteById(blockId: BlockId): Int
+
+    @Query("DELETE FROM BlockEntity WHERE blockId IN (:blockIds)")
+    suspend fun deleteByIds(blockIds: List<BlockId>): Int
 
     @Query("SELECT * FROM BlockEntity")
     fun flowAll(): Flow<List<Block>>

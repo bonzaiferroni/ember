@@ -13,22 +13,25 @@ internal fun WriterState.moveCaretLine(
     require(abs(delta) == 1) { "line caret delta must be 1 or -1" }
     val blocks = blocks
     val block = blocks[caret.blockIndex]
-    val newLineIndex = caret.lineIndex + delta
+    var newLineIndex = caret.lineIndex + delta
     val textIndex = if (newLineIndex < 0) {
         if (caret.blockIndex == 0) return Caret.Home
         val block = blocks[caret.blockIndex - 1]
         val line = block.lines.last()
+        newLineIndex = line.lineIndex
         findNearestTextIndex(block.blockIndex, line.lineIndex, caret.preferredOffsetX, ruler, style)
     } else if (newLineIndex >= block.lines.size) {
         if (caret.blockIndex + 1 >= blocks.size) {
+            newLineIndex = caret.lineIndex
             text.length
         } else {
+            newLineIndex = 0
             findNearestTextIndex(caret.blockIndex + 1, 0, caret.preferredOffsetX, ruler, style)
         }
     } else {
         findNearestTextIndex(caret.blockIndex, newLineIndex, caret.preferredOffsetX, ruler, style)
     }
-    return createCaretAtIndex(textIndex, null, ruler, style, spacePx, false)
+    return createCaretAtIndex(textIndex, newLineIndex, ruler, style, spacePx, false)
 }
 
 internal fun WriterState.createCaretAtIndex(

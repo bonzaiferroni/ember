@@ -23,15 +23,27 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.changedToDown
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.platform.LocalFontLoader
+import androidx.compose.ui.text.Paragraph
+import androidx.compose.ui.text.ParagraphIntrinsics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import pondui.ui.behavior.ifTrue
 import pondui.ui.behavior.magic
+import pondui.ui.theme.Pond
 import kotlin.random.Random
 
 @Composable
@@ -74,10 +86,51 @@ internal fun WriterBlock(
     }
 
     val selectionColor = Color.Cyan.copy(.3f)
+    val fontLoader = LocalFontLoader.current
+    val resolver = LocalFontFamilyResolver.current
+
+    val paragraph = Paragraph(
+        text = "Avast ye, matey!",
+        style = TextStyle(fontSize = 16.sp),
+        constraints =  Constraints(maxWidth = 400),
+        density = density,       // Density from environment
+        fontFamilyResolver = resolver,
+//        constraints = Constraints(maxWidth = 400)
+    )
 
     Box(
         modifier = Modifier.fillMaxWidth()
             .height(maxOf((spaceDp.height + lineSpaceDp) * lines.size, spaceDp.height))
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+
+                        for (change in event.changes) {
+                            when {
+                                change.changedToDown() -> {
+                                    // val cursorIndex = findCursorIndex(block, )
+                                }
+                                change.changedToUp() -> {
+                                    println("Mouse up at ${change.position}")
+                                }
+                                change.pressed -> {
+                                    println("Mouse held at ${change.position}")
+                                }
+                            }
+                        }
+
+                        when (event.type) {
+                            PointerEventType.Enter,
+                            PointerEventType.Move -> {
+                                val pos = event.changes.first().position
+                                // println("Pointer at: $pos")
+                            }
+                            // PointerEventType.Exit -> println("Pointer left")
+                        }
+                    }
+                }
+            }
     ) {
         selectionLines?.forEach { (topLeft, size) ->
             Box(
@@ -101,19 +154,20 @@ internal fun WriterBlock(
 
             WriterWord(
                 word = text,
+                isCaretBlock = caret != null,
                 textLayout = textLayout,
                 size = DpSize(minOf(size.width, width), size.height),
                 modifier = Modifier.offset(offsetXDp, offsetYDp)
-                    .ifTrue(chunkIndex < chunks.size - 1) {
-                        magic(
-                            rotationX = if (flipIndex == 0) 360 * flipDirection else 0,
-                            rotationY = if (flipIndex == 1) 360 * flipDirection else 0,
-                            rotationZ = if (flipIndex == 2) 360 * flipDirection else 0,
-                            fade = false,
-                            durationMillis = 800
-                        )
-                            .padding(end = spaceDp.width)
-                    }
+//                    .ifTrue(chunkIndex < chunks.size - 1 && caret != null) {
+//                        magic(
+//                            rotationX = if (flipIndex == 0) 360 * flipDirection else 0,
+//                            rotationY = if (flipIndex == 1) 360 * flipDirection else 0,
+//                            rotationZ = if (flipIndex == 2) 360 * flipDirection else 0,
+//                            fade = false,
+//                            durationMillis = 800
+//                        )
+//                    }
+                    .padding(end = spaceDp.width)
             )
         }
         caret?.let {

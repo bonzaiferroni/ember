@@ -25,22 +25,7 @@ fun JournalScreen(
     viewModel: JournalModel = viewModel { JournalModel(null) }
 ) {
     val state by viewModel.stateFlow.collectAsState()
-    LazyScaffold {
-
-        items(state.blocks) { block ->
-            BlockField(block.text, onValueChange = { })
-        }
-
-        item("content") {
-            Column(1) {
-                BlockField(state.content, onValueChange = viewModel::setContent, modifier = Modifier.onEnterPressed(viewModel::addBlock))
-                Row(1) {
-                    Button(TablerIcons.Plus, onClick = viewModel::addBlock)
-                    MoreMenu {
-                        MoreMenuItem("Import", onClick = viewModel::import)
-                    }
-                }
-            }
-        }
+    Scaffold {
+        Writer(state.content, onValueChange = viewModel::setContent)
     }
 }
