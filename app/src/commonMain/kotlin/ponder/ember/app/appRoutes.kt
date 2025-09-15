@@ -22,7 +22,7 @@ data class ExampleProfileRoute(val exampleId: Long) : AppRoute(TITLE) {
 }
 
 @Serializable
-object WriterRoute : AppRoute("Writer")
+object WriterRoute : AppRoute("OldWriter")
 
 @Serializable
 object JournalRoute : AppRoute("Journal")

@@ -12,7 +12,7 @@ internal fun parseBlockContent(
     style: TextStyle,
     blockWidthPx: Int,
     spacePx: Int,
-): WriterBlock {
+): OldWriterBlock {
     val chunks = mutableListOf<WriterChunk>()
     val lines = mutableListOf<WriterLine>()
     var index = 0
@@ -89,7 +89,7 @@ internal fun parseBlockContent(
 
     finishLine(index)
 
-    return WriterBlock(
+    return OldWriterBlock(
         text = text,
         chunks = chunks,
         lines = lines,
@@ -106,7 +106,7 @@ internal fun parseBlockContent2(
     style: TextStyle,
     blockWidthPx: Int,
     spacePx: Int,
-): WriterBlock {
+): OldWriterBlock {
     val chunks = mutableListOf<WriterChunk>()
     val lines = mutableListOf<WriterLine>()
 
@@ -121,7 +121,7 @@ internal fun parseBlockContent2(
                 lineIndex = 0
             )
         )
-        return WriterBlock(
+        return OldWriterBlock(
             text = text,
             chunks = chunks,
             lines = lines,
@@ -261,7 +261,7 @@ internal fun parseBlockContent2(
 
     finishLine(n)
 
-    return WriterBlock(
+    return OldWriterBlock(
         text = text,
         chunks = chunks,
         lines = lines,

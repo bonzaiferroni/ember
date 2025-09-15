@@ -20,7 +20,7 @@ fun ZenWriterScreen(
     Scaffold {
         Column(1) {
             Section {
-                Writer(
+                OldWriter(
                     text = state.content,
                     onValueChange = viewModel::setContent
                 )

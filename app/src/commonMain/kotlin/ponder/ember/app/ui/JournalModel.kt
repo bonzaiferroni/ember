@@ -3,6 +3,9 @@ package ponder.ember.app.ui
 import kabinet.clients.OllamaClient
 import kabinet.utils.cosineDistance
 import kabinet.utils.startOfDay
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -51,12 +54,12 @@ class JournalModel(
 
             launch {
                 dao.block.flowByDocumentId(documentId).collect { blocks ->
-                    val content = if (!initializedBlocks) {
+                    val contents = if (!initializedBlocks) {
                         initializedBlocks = true
-                        blocks.joinToString("\n") { it.text }
-                    } else stateNow.content
+                        blocks.map { it.text }
+                    } else stateNow.contents
                     setStateFromMain { state ->
-                        state.copy(blocks = blocks.sortedBy { it.position }, content = content)
+                        state.copy(blocks = blocks.sortedBy { it.position }, contents = contents)
                     }
                 }
             }
@@ -64,17 +67,16 @@ class JournalModel(
     }
 
     private var job: Job? = null
-    fun setContent(value: String) {
+    fun setContents(contents: List<String>) {
         val document = stateNow.document ?: return
         val now = Clock.System.now()
-        setState { it.copy(content = value) }
+        setState { it.copy(contents = contents) }
 
         job?.cancel()
         job = ioLaunch {
             delay(5000)
 
-            val textBlocks = value.split('\n')
-            val blocks = textBlocks.mapIndexed { index, textBlock ->
+            val blocks = contents.mapIndexed { index, textBlock ->
                 stateNow.blocks.firstOrNull { it.text == textBlock }?.copy(position = index)?.toEntity()
                     ?: BlockEntity(
                         blockId = BlockId.random(),
@@ -93,40 +95,13 @@ class JournalModel(
             // embedding = vector
         }
     }
-
-    fun addBlock() {
-        val text = stateNow.content.takeIf { it.isNotBlank() } ?: return
-        val document = stateNow.document ?: return
-        val embedding = embedding ?: return
-        ioLaunch {
-            val blockId = BlockId.random()
-            val now = Clock.System.now()
-            dao.block.insert(
-                BlockEntity(
-                    blockId = blockId,
-                    documentId = document.documentId,
-                    text = text,
-                    position = stateNow.blocks.size,
-                    createdAt = now,
-                )
-            )
-            dao.block.insert(
-                BlockEmbedding(
-                    blockId = blockId,
-                    embedding = embedding
-                )
-            )
-
-            setStateFromMain { it.copy(content = "") }
-        }
-    }
 }
 
 data class JournalState(
     val document: Document? = null,
     val blocks: List<Block> = emptyList(),
     // val tags: List<Tag> = emptyList(),
-    val content: String = "",
+    val contents: List<String> = emptyList(),
     // val activeTagId: Set<TagId> = emptySet()
 )
 
