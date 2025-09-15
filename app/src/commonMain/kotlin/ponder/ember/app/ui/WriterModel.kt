@@ -2,6 +2,7 @@ package ponder.ember.app.ui
 
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.text.Paragraph
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
@@ -27,16 +28,16 @@ internal class WriterModel(
         state.value = block(state.value)
     }
 
-    fun updateContent(contents: List<String>, caretIndex: Int? = null, blockWidthPx: Int = stateNow.blockWidthPx) {
+    fun updateContents(contents: List<String>, caretIndex: Int? = null, blockWidthPx: Int = stateNow.blockWidthPx) {
         if (contents == stateNow.contents && blockWidthPx == stateNow.blockWidthPx) return
 
-        var textIndex = 0
+        var bodyIndex = 0
         val blocks = contents.mapIndexed { blockIndex, blockText ->
             val blockContent = stateNow.blocks.takeIf { stateNow.blockWidthPx == blockWidthPx }
                 ?.firstOrNull { it.text == blockText }
-                ?.copy(textIndex = textIndex, blockIndex = blockIndex)
-                ?: blockParser.buildBlockContent(blockText, textIndex, blockIndex, blockWidthPx)
-            textIndex += blockText.length + 1
+                ?.copy(bodyRange = TextRange(bodyIndex, blockText.length), blockIndex = blockIndex)
+                ?: blockParser.buildBlockContent(blockText, bodyIndex, blockIndex, blockWidthPx)
+            bodyIndex += blockText.length + 1
             blockContent
         }
 
@@ -45,12 +46,20 @@ internal class WriterModel(
         setState {
             nextState.copy(
                 caret = caretIndex?.let { nextState.setCaretAtIndex(
-                    textIndex = it,
-                    lineIndex = null,
+                    bodyIndex = it,
                 ) } ?: nextState.caret
             )
         }
         onValueChange(contents)
+    }
+
+    fun addTextAtCaret(value: String) {
+        val caret = stateNow.caret
+        val contents = stateNow.contents.mapIndexed { index, content ->
+            if (index != caret.blockIndex) content
+            else content.insertAt(caret.contentIndex, value)
+        }
+        updateContents(contents, caret.bodyIndex + value.length)
     }
 }
 
@@ -65,25 +74,23 @@ internal data class WriterState(
 internal data class WriterBlock(
     val text: String,
     val paragraph: Paragraph?,
-    val textIndex: Int,
     val blockIndex: Int,
+    val bodyRange: TextRange,
 ) {
-    val endTextIndex get() = textIndex + text.length
-
     companion object {
-        val Empty = WriterBlock("", null, 0, 0)
+        val Empty = WriterBlock("", null, 0, TextRange(0, 0))
     }
 }
 
 internal data class Caret(
-    val textIndex: Int,
-    val blockTextIndex: Int,
+    val bodyIndex: Int,
+    val contentIndex: Int,
     val blockIndex: Int,
     val lineIndex: Int,
-    val offsetX: Int,
-    val preferredOffsetX: Int
+    val offsetX: Float,
+    val preferredOffsetX: Float
 ) {
     companion object {
-        val Home = Caret(0, 0, 0, 0, 0, 0)
+        val Home = Caret(0, 0, 0, 0, 0f, 0f)
     }
 }

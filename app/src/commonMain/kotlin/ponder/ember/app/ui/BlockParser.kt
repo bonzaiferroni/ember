@@ -2,6 +2,7 @@ package ponder.ember.app.ui
 
 import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.ParagraphIntrinsics
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Constraints
@@ -31,6 +32,11 @@ class BlockParser(
             constraints = Constraints(maxWidth = blockWidthPx)
         )
 
-        return WriterBlock(text, paragraph, textIndex, blockIndex)
+        return WriterBlock(
+            text = text,
+            paragraph = paragraph,
+            blockIndex = blockIndex,
+            bodyRange = TextRange(textIndex, text.length)
+        )
     }
 }

@@ -153,13 +153,13 @@ internal fun OldWriterBlock(
             val offsetX = with(density) { it.offsetX.toDp() }
             val offsetY = (spaceDp.height + lineSpaceDp) * caret.lineIndex
             // println("offsetX: $offsetX textIndex: ${it.textIndex}")
-            DrawCaret(offsetX, offsetY, spaceDp)
+            OldDrawCaret(offsetX, offsetY, spaceDp)
         }
     }
 }
 
 @Composable
-internal fun DrawCaret(
+internal fun OldDrawCaret(
     offsetX: Dp,
     offsetY: Dp,
     spaceDp: DpSize,
