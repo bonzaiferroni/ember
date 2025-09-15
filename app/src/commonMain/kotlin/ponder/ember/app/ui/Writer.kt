@@ -96,16 +96,10 @@ fun Writer(
                         model.moveCaretEnd(event.isShiftPressed)
                     }
                     Key.MoveHome -> {
-//                        val block = state.blocks[caret.blockIndex]
-//                        val line = block.lines[caret.lineIndex]
-//                        if (caret.blockTextIndex == line.blockTextIndex) {
-//                            model.moveCaret(-caretIndex, event.isShiftPressed)
-//                        } else {
-//                            model.moveCaret(line.blockTextIndex - caret.blockTextIndex, event.isShiftPressed, caret.lineIndex)
-//                        }
+                        model.moveCaretHome(event.isShiftPressed)
                     }
-//                    Key.DirectionUp -> model.moveCaretLine(-1, event.isShiftPressed)
-//                    Key.DirectionDown -> model.moveCaretLine(1, event.isShiftPressed)
+                    Key.DirectionUp -> model.moveCaretVertical(-1, event.isShiftPressed)
+                    Key.DirectionDown -> model.moveCaretVertical(1, event.isShiftPressed)
 //                    Key.A -> {
 //                        if (event.isCtrlPressed) {
 //                            model.moveCaret(-caretIndex, false)

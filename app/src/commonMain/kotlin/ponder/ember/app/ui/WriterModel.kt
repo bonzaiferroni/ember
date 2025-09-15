@@ -1,6 +1,7 @@
 package ponder.ember.app.ui
 
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -78,6 +79,41 @@ internal class WriterModel(
         setState { it.copy(caret = caret, selectCaret = selectionCaret) }
     }
 
+    fun moveCaretVertical(delta: Int, isSelection: Boolean) {
+        val currentCaret = stateNow.caret
+        val selectionCaret = provideSelectionCaret(isSelection)
+        val caret = if (delta < 0) {
+            if (currentCaret.lineIndex == 0) {
+                if (currentCaret.blockIndex == 0) return
+                val block = stateNow.blocks[currentCaret.blockIndex - 1]
+                val paragraph = block.paragraph ?: return
+                val contentIndex = paragraph.getOffsetForPosition(Offset(currentCaret.preferredOffsetX, paragraph.height))
+                stateNow.createCaretAtIndex(block.bodyIndex + contentIndex, currentCaret.preferredOffsetX)
+            } else {
+                val block = stateNow.blocks[currentCaret.blockIndex]
+                val paragraph = block.paragraph ?: return
+                val height = paragraph.getLineTop(currentCaret.lineIndex)
+                val contentIndex = paragraph.getOffsetForPosition(Offset(currentCaret.preferredOffsetX, height))
+                stateNow.createCaretAtIndex(block.bodyIndex + contentIndex, currentCaret.preferredOffsetX)
+            }
+        } else {
+            val block = stateNow.blocks[currentCaret.blockIndex]
+            val paragraph = block.paragraph ?: return
+            if (currentCaret.lineIndex >= paragraph.lineCount - 1) {
+                if (currentCaret.blockIndex >= stateNow.blocks.size - 1) return
+                val nextBlock = stateNow.blocks[currentCaret.blockIndex + 1]
+                val nextParagraph = nextBlock.paragraph ?: return
+                val contentIndex = nextParagraph.getOffsetForPosition(Offset(currentCaret.preferredOffsetX, 0f))
+                stateNow.createCaretAtIndex(nextBlock.bodyIndex + contentIndex, currentCaret.preferredOffsetX)
+            } else {
+                val height = paragraph.getLineBottom(currentCaret.lineIndex)
+                val contentIndex = paragraph.getOffsetForPosition(Offset(currentCaret.preferredOffsetX, height))
+                stateNow.createCaretAtIndex(block.bodyIndex + contentIndex, currentCaret.preferredOffsetX)
+            }
+        }
+        setState { it.copy(caret = caret, selectCaret = selectionCaret) }
+    }
+
     private fun provideSelectionCaret(isSelection: Boolean) = if (isSelection) {
         if (stateNow.selectCaret == null) stateNow.caret
         else stateNow.selectCaret
@@ -95,6 +131,20 @@ internal class WriterModel(
             stateNow.bodyLength - 1
         }
         val caret = stateNow.createCaretAtIndex(bodyIndex)
+        setState { it.copy(caret = caret, selectCaret = selectionCaret) }
+    }
+
+    fun moveCaretHome(isSelection: Boolean) {
+        val currentCaret = stateNow.caret
+        val selectionCaret = provideSelectionCaret(isSelection)
+        val caret = if (currentCaret.offsetX == 0f) {
+            Caret.Home
+        } else {
+            val block = stateNow.caretBlock ?: return
+            val paragraph = block.paragraph ?: return
+            val bodyIndex = block.bodyIndex + paragraph.getLineStart(currentCaret.lineIndex)
+            stateNow.createCaretAtIndex(bodyIndex)
+        }
         setState { it.copy(caret = caret, selectCaret = selectionCaret) }
     }
 }
