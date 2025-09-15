@@ -19,14 +19,17 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.text.AnnotatedString
 import pondui.ui.controls.LazyColumn
 import pondui.ui.theme.Pond
 
@@ -38,6 +41,7 @@ fun Writer(
     val resolver = LocalFontFamilyResolver.current
     val density = LocalDensity.current
     val style = Pond.typo.body
+    val clipBoard = LocalClipboardManager.current
     var blockWidthPx by remember { mutableIntStateOf(0) }
     val model = remember { WriterModel(
         style = style,
@@ -100,29 +104,29 @@ fun Writer(
                     }
                     Key.DirectionUp -> model.moveCaretVertical(-1, event.isShiftPressed)
                     Key.DirectionDown -> model.moveCaretVertical(1, event.isShiftPressed)
-//                    Key.A -> {
-//                        if (event.isCtrlPressed) {
-//                            model.moveCaret(-caretIndex, false)
-//                            model.moveCaret(text.length, true)
-//                        } else isConsumed = false
-//                    }
-//                    Key.X -> {
-//                        if (event.isCtrlPressed) {
-//                            state.selectedText?.let { clipBoard.setText(AnnotatedString(it)) }
-//                            model.cutSelectionText()
-//                        } else isConsumed = false
-//                    }
-//                    Key.C -> {
-//                        if (event.isCtrlPressed) {
-//                            state.selectedText?.let { clipBoard.setText(AnnotatedString(it)) }
-//                        } else isConsumed = false
-//                    }
-//                    Key.V -> {
-//                        if (event.isCtrlPressed) {
-//                            val text = clipBoard.getText()?.text
-//                            if (text != null) model.addTextAtCaret(text)
-//                        } else isConsumed = false
-//                    }
+                    Key.A -> {
+                        if (event.isCtrlPressed) {
+                            model.moveCaretHorizontal(-caret.bodyIndex, false)
+                            model.moveCaretHorizontal(state.bodyLength, true)
+                        } else isConsumed = false
+                    }
+                    Key.X -> {
+                        if (event.isCtrlPressed) {
+                            state.selectedText?.let { clipBoard.setText(AnnotatedString(it)) }
+                            model.cutSelectionText()
+                        } else isConsumed = false
+                    }
+                    Key.C -> {
+                        if (event.isCtrlPressed) {
+                            state.selectedText?.let { clipBoard.setText(AnnotatedString(it)) }
+                        } else isConsumed = false
+                    }
+                    Key.V -> {
+                        if (event.isCtrlPressed) {
+                            val text = clipBoard.getText()?.text
+                            if (text != null) model.addTextAtCaret(text)
+                        } else isConsumed = false
+                    }
                     else -> isConsumed = false
                 }
 
@@ -139,12 +143,12 @@ fun Writer(
     ) {
         items(state.blocks, { it.blockIndex } ) { block ->
             val isCaretPresent = isFocused && caret.bodyIndex >= block.bodyIndex && caret.bodyIndex <= block.bodyIndexEnd
-//            val isSelectionPresent = selection != null && selection.start.textIndex < block.endTextIndex
-//                    && selection.end.textIndex > block.textIndex
+            val isSelectionPresent = selection != null && selection.start.bodyIndex < block.bodyIndexEnd
+                    && selection.end.bodyIndex > block.bodyIndex
             WriterBlock(
                 block = block,
                 caret = state.caret.takeIf { isCaretPresent },
-//                selection = selection.takeIf { isSelectionPresent },
+                selection = selection.takeIf { isSelectionPresent },
             )
         }
     }

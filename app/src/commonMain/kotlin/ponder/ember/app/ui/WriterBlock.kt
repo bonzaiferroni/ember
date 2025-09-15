@@ -15,22 +15,59 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.Paragraph
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun WriterBlock(
     block: WriterBlock,
     caret: Caret?,
+    selection: Selection?,
 ) {
     val paragraph = block.paragraph ?: return
 
+    val selectionLines = selection?.let { selection ->
+        block.lines.mapNotNull { line ->
+            val lineBodyIndex = block.bodyIndex + line.contentIndex
+            val lineBodyIndexEnd = block.bodyIndex + line.contentIndexEnd
+            if (selection.start.bodyIndex > lineBodyIndexEnd || selection.end.bodyIndex < lineBodyIndex)
+                return@mapNotNull null
+            if (selection.start.blockIndex == block.blockIndex && selection.start.lineIndex > line.lineIndex)
+                return@mapNotNull null
+            if (selection.end.blockIndex == block.blockIndex && selection.end.lineIndex < line.lineIndex)
+                return@mapNotNull null
+            val startX = if (selection.start.bodyIndex > lineBodyIndex) selection.start.offsetX else line.left
+            val endX = if (selection.end.bodyIndex < lineBodyIndexEnd) selection.end.offsetX
+            else line.width
+            val topLeft = Offset(
+                x = startX,
+                y = line.top
+            )
+            val size = Size(
+                width = (endX - startX),
+                height = line.height
+            )
+            Pair(topLeft, size)
+        }
+    }
+
+    val selectionColor = Color.Cyan.copy(.3f)
+
     Box {
+        selectionLines?.forEach { (topLeft, size) ->
+            Box(
+                modifier = Modifier.drawBehind {
+                    drawRoundRect(selectionColor, topLeft, size, cornerRadius = CornerRadius(3f))
+                }
+            )
+        }
+
         Box(
             modifier = Modifier.fillMaxWidth()
                 .height(paragraph.height.dp)

@@ -34,7 +34,12 @@ internal fun List<String>.insertText(caret: Caret, text: String) =
     else insertContentText(caret.blockIndex, caret.contentIndex, text)
 
 internal fun List<String>.insertBodyText(bodyIndex: Int, text: String): List<String> = buildString {
-    this@insertBodyText.forEach { appendLine(it) }
+    this@insertBodyText.forEachIndexed { index, content ->
+        append(content)
+        if (index < this@insertBodyText.size - 1) {
+            append('\n')
+        }
+    }
     insert(bodyIndex, text)
 }.split("\n")
 

@@ -34,8 +34,23 @@ class BlockParser(
         return WriterBlock(
             content = content,
             paragraph = paragraph,
+            lines = List(paragraph.lineCount) { lineIndex ->
+                val contentIndex = paragraph.getLineStart(lineIndex)
+                WriterLine(
+                    lineIndex = lineIndex,
+                    bodyIndex = bodyIndex + contentIndex,
+                    contentIndex = contentIndex,
+                    length = paragraph.getLineEnd(lineIndex) - contentIndex,
+                    width = paragraph.getLineWidth(lineIndex),
+                    height = paragraph.getLineHeight(lineIndex),
+                    left = paragraph.getLineLeft(lineIndex),
+                    top = paragraph.getLineTop(lineIndex),
+                    isLast = lineIndex == paragraph.lineCount - 1,
+                    isFirst = lineIndex == 0
+                )
+            },
             blockIndex = blockIndex,
-            bodyIndex = bodyIndex
+            bodyIndex = bodyIndex,
         )
     }
 }

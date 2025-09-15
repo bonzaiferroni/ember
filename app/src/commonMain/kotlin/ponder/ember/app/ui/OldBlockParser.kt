@@ -9,7 +9,7 @@ internal class OldBlockParser(
     private val spacePx: Int,
 ) {
     private val chunks = mutableListOf<WriterChunk>()
-    private val lines = mutableListOf<WriterLine>()
+    private val lines = mutableListOf<OldWriterLine>()
     private var text: String = ""
     private var offsetX = 0
     private var lineTextIndex = 0
@@ -37,7 +37,7 @@ internal class OldBlockParser(
             return OldWriterBlock(
                 text = text,
                 chunks = chunks.toList(),
-                lines = listOf(WriterLine.Empty),
+                lines = listOf(OldWriterLine.Empty),
                 textIndex = textIndex,
                 blockIndex = blockIndex,
             )
@@ -128,7 +128,7 @@ internal class OldBlockParser(
     fun finishLine(newLineIndex: Int) {
         if (newLineIndex == lineTextIndex) return
         lines.add(
-            WriterLine(
+            OldWriterLine(
                 blockTextIndex = lineTextIndex,
                 length = newLineIndex - lineTextIndex,
                 chunkIndex = startChunkIndex,

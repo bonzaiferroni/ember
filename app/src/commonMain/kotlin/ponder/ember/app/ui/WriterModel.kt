@@ -121,14 +121,17 @@ internal class WriterModel(
 
     fun moveCaretEnd(isSelection: Boolean) {
         val block = stateNow.caretBlock ?: return
-        val paragraph = block.paragraph ?: return
         val currentCaret = stateNow.caret
+        val line = block.lines[currentCaret.lineIndex]
         val selectionCaret = provideSelectionCaret(isSelection)
-        val lineEndOffsetX = paragraph.getLineRight(currentCaret.lineIndex)
-        val bodyIndex = if (lineEndOffsetX > currentCaret.offsetX) {
-            block.bodyIndex + paragraph.getLineEnd(currentCaret.lineIndex) - 1
+        val bodyIndex = if (line.right > currentCaret.offsetX) {
+            if (line.isLast) {
+                line.bodyIndexEnd
+            } else {
+                line.bodyIndexEnd - 1
+            }
         } else {
-            stateNow.bodyLength - 1
+            stateNow.bodyLength
         }
         val caret = stateNow.createCaretAtIndex(bodyIndex)
         setState { it.copy(caret = caret, selectCaret = selectionCaret) }
@@ -165,6 +168,10 @@ internal data class WriterState(
     }
 
     val caretBlock get() = caret.blockIndex.takeIf { it < blocks.size}?.let { blocks[it]}
+
+    val bodyText by lazy { contents.joinToString("\n") }
+
+    val selectedText = selection?.let { bodyText.substring(it.start.bodyIndex, it.end.bodyIndex) }
 }
 
 internal data class Selection(
@@ -172,20 +179,39 @@ internal data class Selection(
     val end: Caret
 ) {
     val isMultiBlock get() = start.blockIndex != end.blockIndex
+    val length get() = end.bodyIndex - start.bodyIndex
 }
 
 @Stable
 internal data class WriterBlock(
     val content: String,
     val paragraph: Paragraph?,
+    val lines: List<WriterLine>,
     val blockIndex: Int,
     val bodyIndex: Int,
 ) {
     val bodyIndexEnd get() = bodyIndex + content.length
 
     companion object {
-        val Empty = WriterBlock("", null, 0, 0)
+        val Empty = WriterBlock("", null, emptyList(), 0, 0)
     }
+}
+
+internal data class WriterLine(
+    val lineIndex: Int,
+    val bodyIndex: Int,
+    val contentIndex: Int,
+    val length: Int,
+    val width: Float,
+    val height: Float,
+    val left: Float,
+    val top: Float,
+    val isLast: Boolean,
+    val isFirst: Boolean,
+) {
+    val contentIndexEnd get() = contentIndex + length
+    val bodyIndexEnd get() = bodyIndex + length
+    val right get() = left + width
 }
 
 internal data class Caret(

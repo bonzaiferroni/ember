@@ -130,7 +130,7 @@ internal data class OldCaret(
 internal data class OldWriterBlock(
     val text: String,
     val chunks: List<WriterChunk>,
-    val lines: List<WriterLine>,
+    val lines: List<OldWriterLine>,
     val textIndex: Int,
     val blockIndex: Int,
 ) {
@@ -158,7 +158,7 @@ internal data class WriterChunk(
     }
 }
 
-internal data class WriterLine(
+internal data class OldWriterLine(
     val blockTextIndex: Int,
     val lineIndex: Int,
     val length: Int,
@@ -169,7 +169,7 @@ internal data class WriterLine(
     val endBlockTextIndex get() = blockTextIndex + length
 
     companion object {
-        val Empty = WriterLine(
+        val Empty = OldWriterLine(
             blockTextIndex = 0,
             length = 0,
             chunkIndex = 0,
