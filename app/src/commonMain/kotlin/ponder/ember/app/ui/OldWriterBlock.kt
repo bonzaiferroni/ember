@@ -40,7 +40,7 @@ import kotlin.random.Random
 internal fun OldWriterBlock(
     block: OldWriterBlock,
     caret: OldCaret?,
-    selection: Selection?,
+    selection: OldSelection?,
     spacePx: IntSize,
 ) {
     val density = LocalDensity.current

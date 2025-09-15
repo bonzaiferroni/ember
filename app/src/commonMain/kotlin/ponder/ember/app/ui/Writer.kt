@@ -19,6 +19,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
@@ -45,7 +46,6 @@ fun Writer(
         onValueChange = onValueChange
     ) }
     val state by model.stateFlow.collectAsState()
-    val caretIndex = state.caret.bodyIndex
     var isFocused by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
@@ -53,8 +53,15 @@ fun Writer(
 
     model.updateContents(content.contents, blockWidthPx = blockWidthPx)
 
+    val caret = state.caret
+    val selection = state.selection
+
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+    }
+
+    LaunchedEffect(caret.lineIndex, caret.blockIndex) {
+        listState.animateScrollToItem(caret.blockIndex)
     }
 
     LazyColumn(
@@ -73,50 +80,20 @@ fun Writer(
 
                 when (event.key) {
                     Key.Backspace -> {
-//                        if (selection == null) {
-//                            model.moveCaret(-1, true)
-//                        }
-//                        model.cutSelectionText()
+                        if (selection == null) {
+                            model.moveCaretHorizontal(-1, true)
+                        }
+                        model.cutSelectionText()
                     }
                     Key.DirectionLeft -> {
-//                        val block = state.blocks[caret.blockIndex]
-//                        val line = block.lines[caret.lineIndex]
-//                        if (caret.blockTextIndex == line.blockTextIndex) {
-//                            if (line.lineIndex - 1 >= 0) {
-//                                model.moveCaret(0, false, caret.lineIndex - 1)
-//                            } else {
-//                                model.moveCaret(-1, event.isShiftPressed, null)
-//                            }
-//                        } else if (!event.isShiftPressed && selection != null) {
-//                            model.setCaret(selection.start, null)
-//                        } else {
-//                            model.moveCaret(-1, event.isShiftPressed, caret.lineIndex)
-//                        }
+                        model.moveCaretHorizontal(-1, event.isShiftPressed)
                     }
                     Key.DirectionRight -> {
-//                        val block = state.blocks[caret.blockIndex]
-//                        val line = block.lines[caret.lineIndex]
-//                        if (caret.blockTextIndex == line.endBlockTextIndex) {
-//                            if (block.lines.size > line.lineIndex + 1) {
-//                                model.moveCaret(0, false, caret.lineIndex + 1)
-//                            } else {
-//                                model.moveCaret(1, event.isShiftPressed, null)
-//                            }
-//                        } else if (!event.isShiftPressed && selection != null) {
-//                            model.setCaret(selection.end, null)
-//                        } else {
-//                            model.moveCaret(1, event.isShiftPressed, caret.lineIndex)
-//                        }
+                        model.moveCaretHorizontal(1, event.isShiftPressed)
                     }
-                    // Key.Enter -> model.addTextAtCaret("\n")
+                    Key.Enter -> model.addTextAtCaret("\n")
                     Key.MoveEnd -> {
-//                        val block = state.blocks[caret.blockIndex]
-//                        val line = block.lines[caret.lineIndex]
-//                        if (caret.blockTextIndex == line.endBlockTextIndex) {
-//                            model.moveCaret(text.length - caretIndex, event.isShiftPressed)
-//                        } else {
-//                            model.moveCaret(line.endBlockTextIndex - caret.blockTextIndex, event.isShiftPressed, caret.lineIndex)
-//                        }
+                        model.moveCaretEnd(event.isShiftPressed)
                     }
                     Key.MoveHome -> {
 //                        val block = state.blocks[caret.blockIndex]
@@ -167,7 +144,7 @@ fun Writer(
             }
     ) {
         items(state.blocks, { it.blockIndex } ) { block ->
-            val isCaretPresent = isFocused && caretIndex >= block.bodyRange.start && caretIndex <= block.bodyRange.end
+            val isCaretPresent = isFocused && caret.bodyIndex >= block.bodyIndex && caret.bodyIndex <= block.bodyIndexEnd
 //            val isSelectionPresent = selection != null && selection.start.textIndex < block.endTextIndex
 //                    && selection.end.textIndex > block.textIndex
             WriterBlock(

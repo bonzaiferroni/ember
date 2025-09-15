@@ -42,7 +42,7 @@ internal class OldWriterModel(
 
         setState {
             nextState.copy(
-                caret = caretIndex?.let { nextState.setCaretAtIndex(
+                caret = caretIndex?.let { nextState.createCaretAtIndex(
                     textIndex = it,
                     lineIndex = null,
                     ruler = ruler,
@@ -57,7 +57,7 @@ internal class OldWriterModel(
     fun moveCaret(delta: Int, isSelection: Boolean, lineIndex: Int? = null) {
         val textIndex = stateNow.caret.textIndex + delta
         val selectionCaret = provideSelectionCaret(isSelection)
-        val caret = stateNow.setCaretAtIndex(textIndex, lineIndex, ruler, style, spacePx)
+        val caret = stateNow.createCaretAtIndex(textIndex, lineIndex, ruler, style, spacePx)
         setState { it.copy(caret = caret, selectCaret = selectionCaret) }
     }
 
@@ -105,8 +105,8 @@ internal data class OldWriterState(
 ) {
     val selection get() = when {
         selectCaret == null -> null
-        selectCaret.textIndex > caret.textIndex -> Selection(caret, selectCaret)
-        else -> Selection(selectCaret, caret)
+        selectCaret.textIndex > caret.textIndex -> OldSelection(caret, selectCaret)
+        else -> OldSelection(selectCaret, caret)
     }
 
     val selectedText get() = selection?.let { text.substring(it.start.textIndex, it.end.textIndex) }
@@ -125,12 +125,6 @@ internal data class OldCaret(
         val Home = OldCaret(0, 0, 0, 0, 0, 0, 0)
     }
 }
-
-internal data class WriterSnapshot(
-    val text: String,
-    val caret: OldCaret,
-    val selectCaret: OldCaret
-)
 
 @Stable
 internal data class OldWriterBlock(
@@ -185,7 +179,7 @@ internal data class WriterLine(
     }
 }
 
-internal data class Selection(
+internal data class OldSelection(
     val start: OldCaret,
     val end: OldCaret
 )

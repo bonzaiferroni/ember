@@ -1,11 +1,11 @@
 package ponder.ember.app.ui
 
-internal fun WriterState.setCaretAtIndex(
+internal fun WriterState.createCaretAtIndex(
     bodyIndex: Int,
 ): Caret {
-    val block = blocks.first { it.bodyRange.end >= bodyIndex }
+    val block = blocks.first { it.bodyIndexEnd >= bodyIndex }
     val paragraph = block.paragraph ?: error("paragraph not found")
-    val contentIndex = bodyIndex - block.bodyRange.start
+    val contentIndex = bodyIndex - block.bodyIndex
     val lineIndex = block.paragraph.getLineForOffset(contentIndex)
     val offsetX = paragraph.getHorizontalPosition(contentIndex, true)
     return Caret(

@@ -2,7 +2,6 @@ package ponder.ember.app.ui
 
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.text.Paragraph
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
@@ -34,18 +33,23 @@ internal class WriterModel(
         var bodyIndex = 0
         val blocks = contents.mapIndexed { blockIndex, blockText ->
             val blockContent = stateNow.blocks.takeIf { stateNow.blockWidthPx == blockWidthPx }
-                ?.firstOrNull { it.text == blockText }
-                ?.copy(bodyRange = TextRange(bodyIndex, blockText.length), blockIndex = blockIndex)
+                ?.firstOrNull { it.content == blockText }
+                ?.copy(bodyIndex = bodyIndex, blockIndex = blockIndex)
                 ?: blockParser.buildBlockContent(blockText, bodyIndex, blockIndex, blockWidthPx)
             bodyIndex += blockText.length + 1
             blockContent
         }
 
-        val nextState = stateNow.copy(contents = contents, blocks = blocks, blockWidthPx = blockWidthPx)
+        val nextState = stateNow.copy(
+            contents = contents,
+            blocks = blocks,
+            blockWidthPx = blockWidthPx,
+            bodyLength = bodyIndex - 1
+        )
 
         setState {
             nextState.copy(
-                caret = caretIndex?.let { nextState.setCaretAtIndex(
+                caret = caretIndex?.let { nextState.createCaretAtIndex(
                     bodyIndex = it,
                 ) } ?: nextState.caret
             )
@@ -53,32 +57,84 @@ internal class WriterModel(
         onValueChange(contents)
     }
 
-    fun addTextAtCaret(value: String) {
+    fun addTextAtCaret(text: String) {
+        val initialContents = stateNow.selection?.let { stateNow.contents.removeRange(it) } ?: stateNow.contents
         val caret = stateNow.caret
-        val contents = stateNow.contents.mapIndexed { index, content ->
-            if (index != caret.blockIndex) content
-            else content.insertAt(caret.contentIndex, value)
+        val contents = initialContents.insertText(caret, text)
+        updateContents(contents, caret.bodyIndex + text.length)
+    }
+
+    fun cutSelectionText() {
+        val selection = stateNow.selection ?: return
+        val text = stateNow.contents.removeRange(selection)
+        setState { state -> state.copy(selectCaret = null) }
+        updateContents(text, selection.start.bodyIndex)
+    }
+
+    fun moveCaretHorizontal(delta: Int, isSelection: Boolean) {
+        val newBodyIndex = (stateNow.caret.bodyIndex + delta).coerceIn(0, stateNow.bodyLength)
+        val selectionCaret = provideSelectionCaret(isSelection)
+        val caret = stateNow.createCaretAtIndex(newBodyIndex)
+        setState { it.copy(caret = caret, selectCaret = selectionCaret) }
+    }
+
+    private fun provideSelectionCaret(isSelection: Boolean) = if (isSelection) {
+        if (stateNow.selectCaret == null) stateNow.caret
+        else stateNow.selectCaret
+    } else null
+
+    fun moveCaretEnd(isSelection: Boolean) {
+        val block = stateNow.caretBlock ?: return
+        val paragraph = block.paragraph ?: return
+        val currentCaret = stateNow.caret
+        val selectionCaret = provideSelectionCaret(isSelection)
+        val lineEndOffsetX = paragraph.getLineRight(currentCaret.lineIndex)
+        val bodyIndex = if (lineEndOffsetX > currentCaret.offsetX) {
+            block.bodyIndex + paragraph.getLineEnd(currentCaret.lineIndex) - 1
+        } else {
+            stateNow.bodyLength - 1
         }
-        updateContents(contents, caret.bodyIndex + value.length)
+        val caret = stateNow.createCaretAtIndex(bodyIndex)
+        setState { it.copy(caret = caret, selectCaret = selectionCaret) }
     }
 }
+
 
 internal data class WriterState(
     val contents: List<String> = emptyList(),
     val blockWidthPx: Int = 0,
     val blocks: List<WriterBlock> = listOf(WriterBlock.Empty),
-    val caret: Caret = Caret.Home
-)
+    val caret: Caret = Caret.Home,
+    val selectCaret: Caret? = null,
+    val bodyLength: Int = 0,
+) {
+    val selection get() = when {
+        selectCaret == null -> null
+        selectCaret.bodyIndex > caret.bodyIndex -> Selection(caret, selectCaret)
+        else -> Selection(selectCaret, caret)
+    }
+
+    val caretBlock get() = caret.blockIndex.takeIf { it < blocks.size}?.let { blocks[it]}
+}
+
+internal data class Selection(
+    val start: Caret,
+    val end: Caret
+) {
+    val isMultiBlock get() = start.blockIndex != end.blockIndex
+}
 
 @Stable
 internal data class WriterBlock(
-    val text: String,
+    val content: String,
     val paragraph: Paragraph?,
     val blockIndex: Int,
-    val bodyRange: TextRange,
+    val bodyIndex: Int,
 ) {
+    val bodyIndexEnd get() = bodyIndex + content.length
+
     companion object {
-        val Empty = WriterBlock("", null, 0, TextRange(0, 0))
+        val Empty = WriterBlock("", null, 0, 0)
     }
 }
 

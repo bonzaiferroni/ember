@@ -2,7 +2,6 @@ package ponder.ember.app.ui
 
 import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.ParagraphIntrinsics
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Constraints
@@ -15,15 +14,15 @@ class BlockParser(
 ) {
 
     internal fun buildBlockContent(
-        text: String,
-        textIndex: Int,
+        content: String,
+        bodyIndex: Int,
         blockIndex: Int,
         blockWidthPx: Int,
     ): WriterBlock {
 
         val paragraph = Paragraph(
             paragraphIntrinsics = ParagraphIntrinsics(
-                text = text,
+                text = content,
                 style = style,
                 annotations = emptyList(),
                 density = density,
@@ -33,10 +32,10 @@ class BlockParser(
         )
 
         return WriterBlock(
-            text = text,
+            content = content,
             paragraph = paragraph,
             blockIndex = blockIndex,
-            bodyRange = TextRange(textIndex, text.length)
+            bodyIndex = bodyIndex
         )
     }
 }

@@ -69,7 +69,7 @@ internal fun OldWriterState.createCaretAtIndex(
     )
 }
 
-internal fun OldWriterState.setCaretAtIndex(
+internal fun OldWriterState.createCaretAtIndex(
     textIndex: Int,
     lineIndex: Int?,
     ruler: TextMeasurer,
