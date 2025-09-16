@@ -39,7 +39,7 @@ fun ZenWriterScreen(
             Button("Prompt", onClick = viewModel::prompt)
             TextField(
                 text = state.response,
-                onTextChanged = { },
+                onValueChange = { },
                 modifier = Modifier.fillMaxWidth()
             )
 //            state.image?.let {

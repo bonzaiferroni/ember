@@ -45,7 +45,8 @@ internal class WriterModel(
             contents = contents,
             blocks = blocks,
             blockWidthPx = blockWidthPx,
-            bodyLength = bodyIndex - 1
+            bodyLength = bodyIndex - 1,
+            selectCaret = null
         )
 
         setState {
@@ -119,12 +120,12 @@ internal class WriterModel(
         else stateNow.selectCaret
     } else null
 
-    fun moveCaretEnd(isSelection: Boolean) {
+    fun moveCaretEnd(isLineEnd: Boolean, isSelection: Boolean) {
         val block = stateNow.caretBlock ?: return
         val currentCaret = stateNow.caret
         val line = block.lines[currentCaret.lineIndex]
         val selectionCaret = provideSelectionCaret(isSelection)
-        val bodyIndex = if (line.right > currentCaret.offsetX) {
+        val bodyIndex = if (isLineEnd && line.right > currentCaret.offsetX) {
             if (line.isLast) {
                 line.bodyIndexEnd
             } else {
@@ -137,10 +138,10 @@ internal class WriterModel(
         setState { it.copy(caret = caret, selectCaret = selectionCaret) }
     }
 
-    fun moveCaretHome(isSelection: Boolean) {
+    fun moveCaretHome(isLineHome: Boolean, isSelection: Boolean) {
         val currentCaret = stateNow.caret
         val selectionCaret = provideSelectionCaret(isSelection)
-        val caret = if (currentCaret.offsetX == 0f) {
+        val caret = if (!isLineHome || currentCaret.offsetX == 0f) {
             Caret.Home
         } else {
             val block = stateNow.caretBlock ?: return
@@ -171,7 +172,7 @@ internal data class WriterState(
 
     val bodyText by lazy { contents.joinToString("\n") }
 
-    val selectedText = selection?.let { bodyText.substring(it.start.bodyIndex, it.end.bodyIndex) }
+    val selectedText get() = selection?.let { bodyText.substring(it.start.bodyIndex, it.end.bodyIndex) }
 }
 
 internal data class Selection(

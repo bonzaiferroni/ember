@@ -56,4 +56,7 @@ interface BlockDao {
 
     @Query("SELECT * FROM BlockEntity WHERE documentId = :documentId")
     fun flowByDocumentId(documentId: DocumentId): Flow<List<Block>>
+
+    @Query("SELECT count(*) FROM BlockEntity WHERE documentId = :documentId")
+    suspend fun readBlockCount(documentId: DocumentId): Int
 }

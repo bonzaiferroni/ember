@@ -36,7 +36,8 @@ import pondui.ui.theme.Pond
 @Composable
 fun Writer(
     content: WriterContent,
-    onValueChange: (List<String>) -> Unit
+    onValueChange: (List<String>) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val resolver = LocalFontFamilyResolver.current
     val density = LocalDensity.current
@@ -71,7 +72,7 @@ fun Writer(
     LazyColumn(
         gap = 1,
         state = listState,
-        modifier = Modifier.onGloballyPositioned { layout -> blockWidthPx = layout.size.width  }
+        modifier = modifier.onGloballyPositioned { layout -> blockWidthPx = layout.size.width  }
             .fillMaxWidth()
             .onFocusChanged { isFocused = it.isFocused }
             .focusRequester(focusRequester)
@@ -97,10 +98,10 @@ fun Writer(
                     }
                     Key.Enter -> model.addTextAtCaret("\n")
                     Key.MoveEnd -> {
-                        model.moveCaretEnd(event.isShiftPressed)
+                        model.moveCaretEnd(true, event.isShiftPressed)
                     }
                     Key.MoveHome -> {
-                        model.moveCaretHome(event.isShiftPressed)
+                        model.moveCaretHome(true, event.isShiftPressed)
                     }
                     Key.DirectionUp -> model.moveCaretVertical(-1, event.isShiftPressed)
                     Key.DirectionDown -> model.moveCaretVertical(1, event.isShiftPressed)

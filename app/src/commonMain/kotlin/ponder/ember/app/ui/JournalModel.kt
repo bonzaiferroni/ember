@@ -1,15 +1,13 @@
 package ponder.ember.app.ui
 
 import kabinet.clients.OllamaClient
-import kabinet.utils.cosineDistance
 import kabinet.utils.startOfDay
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
+import kabinet.utils.today
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import ponder.ember.app.AppProvider
 import ponder.ember.app.db.AppDao
@@ -25,7 +23,7 @@ import pondui.ui.core.StateModel
 import kotlin.time.Duration.Companion.days
 
 class JournalModel(
-    val documentId: DocumentId?,
+    initialDocumentId: DocumentId?,
     val dao: AppDao = AppProvider.dao,
     val ollama: OllamaClient = OllamaClient()
 ) : StateModel<JournalState>() {
@@ -34,17 +32,35 @@ class JournalModel(
     private var allEmbeddings: List<BlockEmbedding> = emptyList()
     private var embedding: FloatArray? = null
     private var distances: List<Float> = emptyList()
-    private var initializedBlocks = false
 
     init {
-        ioLaunch {
+        loadDocument(initialDocumentId)
+    }
+
+    private var loadJob: Job? = null
+    private fun loadDocument(documentId: DocumentId?) {
+        var initializedBlocks = false
+        loadJob?.cancel()
+        loadJob = ioLaunch {
             val documentId = documentId
                 ?: Clock.startOfDay().let { dao.document.readIdsWithinRange(it, it + 1.days) }.lastOrNull()
                 ?: Document(
                     documentId = DocumentId.random(),
-                    label = "Journal",
+                    label = entryFormat(1, Clock.today()),
                     createdAt = Clock.System.now()
                 ).also { dao.document.insert(it.toEntity()) }.documentId
+
+            if (dao.block.readBlockCount(documentId) == 0) {
+                dao.block.insert(
+                    BlockEntity(
+                        blockId = BlockId.random(),
+                        documentId = documentId,
+                        text = "",
+                        position = 0,
+                        createdAt = Clock.System.now()
+                    )
+                )
+            }
 
             launch {
                 dao.document.flowDocumentById(documentId).collect { document ->
@@ -66,14 +82,21 @@ class JournalModel(
         }
     }
 
-    private var job: Job? = null
+    fun setLabel(label: String) {
+        val document = stateNow.document ?: return
+        ioLaunch {
+            dao.document.update(document.copy(label = label).toEntity())
+        }
+    }
+
+    private var contentsJob: Job? = null
     fun setContents(contents: List<String>) {
         val document = stateNow.document ?: return
         val now = Clock.System.now()
         setState { it.copy(contents = contents) }
 
-        job?.cancel()
-        job = ioLaunch {
+        contentsJob?.cancel()
+        contentsJob = ioLaunch {
             delay(5000)
 
             val blocks = contents.mapIndexed { index, textBlock ->
@@ -95,6 +118,19 @@ class JournalModel(
             // embedding = vector
         }
     }
+
+    fun newDocument() {
+        ioLaunch {
+            val entryNumber = Clock.startOfDay().let { dao.document.readIdsWithinRange(it, it + 1.days) }.size
+            val date = Clock.today()
+            val documentId = Document(
+                documentId = DocumentId.random(),
+                label = entryFormat(entryNumber, date),
+                createdAt = Clock.System.now()
+            ).also { dao.document.insert(it.toEntity()) }.documentId
+            loadDocument(documentId)
+        }
+    }
 }
 
 data class JournalState(
@@ -108,4 +144,39 @@ data class JournalState(
 @Serializable
 data class JournalExport(
     val blocks: List<Block>
+)
+
+fun entryFormat(entryNumber: Int, date: LocalDate): String {
+    val day = date.dayOfMonth
+    val month = date.monthNumber
+    val year = yearDesignations[date.year]
+
+    val entryPrefix = if (entryNumber == 1) {
+        "Entry for the"
+    } else {
+        "${numberToOrdinalWord(entryNumber)} Entry for the"
+    }
+
+    val dayWord = numberToOrdinalWord(day)
+    val monthWord = numberToOrdinalWord(month)
+
+    return "$entryPrefix $dayWord Day of the $monthWord Month in the $year"
+}
+
+fun numberToOrdinalWord(n: Int): String {
+    return ordinals.getOrElse(n - 1) { n.toString() }
+}
+
+private val ordinals = listOf(
+    "First", "Second", "Third", "Fourth", "Fifth",
+    "Sixth", "Seventh", "Eighth", "Ninth", "Tenth",
+    "Eleventh", "Twelfth", "Thirteenth", "Fourteenth", "Fifteenth",
+    "Sixteenth", "Seventeenth", "Eighteenth", "Nineteenth", "Twentieth",
+    "Twenty-First", "Twenty-Second", "Twenty-Third", "Twenty-Fourth", "Twenty-Fifth",
+    "Twenty-Sixth", "Twenty-Seventh", "Twenty-Eighth", "Twenty-Ninth", "Thirtieth",
+    "Thirty-First"
+)
+
+private val yearDesignations = mapOf(
+    2025 to "First Year My Petunias Grew Back"
 )
