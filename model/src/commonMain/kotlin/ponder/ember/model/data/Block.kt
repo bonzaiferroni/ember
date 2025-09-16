@@ -12,7 +12,8 @@ data class Block(
     val documentId: DocumentId = DocumentId(""),
     // val label: String?,
     val text: String,
-    val position: Int = 0,
+    val position: Int,
+    val level: Int? = 0,
     val createdAt: Instant
 )
 

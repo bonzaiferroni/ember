@@ -1,8 +1,6 @@
 package ponder.ember.app.ui
 
-import androidx.compose.runtime.Stable
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.text.Paragraph
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,7 +10,7 @@ internal class WriterModel(
     private val styles: StyleSet,
     private val density: Density,
     private val resolver: FontFamily.Resolver,
-    val onValueChange: (List<String>) -> Unit,
+    val onValueChange: (WriterParse) -> Unit,
     val blockParser: BlockParser = BlockParser(
         styles = styles,
         density = density,
@@ -46,16 +44,12 @@ internal class WriterModel(
             blockWidthPx = blockWidthPx,
             bodyLength = bodyIndex - 1,
             selectCaret = null
-        )
-
-        setState {
-            nextState.copy(
-                caret = caretIndex?.let { nextState.createCaretAtIndex(
-                    bodyIndex = it,
-                ) } ?: nextState.caret
-            )
+        ).let { state ->
+            state.copy(caret = caretIndex?.let { state.createCaretAtIndex(bodyIndex = it) } ?: state.caret)
         }
-        onValueChange(contents)
+
+        setState { nextState }
+        onValueChange(nextState)
     }
 
     fun addTextAtCaret(text: String) {
@@ -154,13 +148,13 @@ internal class WriterModel(
 
 
 internal data class WriterState(
-    val contents: List<String> = emptyList(),
+    override val contents: List<String> = emptyList(),
+    override val blocks: List<TextBlock> = listOf(TextBlock.Empty),
     val blockWidthPx: Int = 0,
-    val blocks: List<TextBlock> = listOf(TextBlock.Empty),
     val caret: Caret = Caret.Home,
     val selectCaret: Caret? = null,
     val bodyLength: Int = 0,
-) {
+): WriterParse {
     val selection get() = when {
         selectCaret == null -> null
         selectCaret.bodyIndex > caret.bodyIndex -> Selection(caret, selectCaret)
@@ -180,39 +174,6 @@ internal data class Selection(
 ) {
     val isMultiBlock get() = start.blockIndex != end.blockIndex
     val length get() = end.bodyIndex - start.bodyIndex
-}
-
-@Stable
-internal data class TextBlock(
-    val content: String,
-    val paragraph: Paragraph?,
-    val lines: List<TextLine>,
-    val blockIndex: Int,
-    val bodyIndex: Int,
-    val markdown: MarkdownBlock
-) {
-    val bodyIndexEnd get() = bodyIndex + content.length
-
-    companion object {
-        val Empty = TextBlock("", null, emptyList(), 0, 0, ParagraphBlock(emptyList()))
-    }
-}
-
-internal data class TextLine(
-    val lineIndex: Int,
-    val bodyIndex: Int,
-    val contentIndex: Int,
-    val length: Int,
-    val width: Float,
-    val height: Float,
-    val left: Float,
-    val top: Float,
-    val isLast: Boolean,
-    val isFirst: Boolean,
-) {
-    val contentIndexEnd get() = contentIndex + length
-    val bodyIndexEnd get() = bodyIndex + length
-    val right get() = left + width
 }
 
 internal data class Caret(

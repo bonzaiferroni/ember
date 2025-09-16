@@ -57,7 +57,8 @@ class JournalModel(
                         documentId = documentId,
                         text = "",
                         position = 0,
-                        createdAt = Clock.System.now()
+                        level = 0,
+                    createdAt = Clock.System.now()
                     )
                 )
             }
@@ -90,23 +91,24 @@ class JournalModel(
     }
 
     private var contentsJob: Job? = null
-    fun setContents(contents: List<String>) {
+    fun setContents(parse: WriterParse) {
         val document = stateNow.document ?: return
         val now = Clock.System.now()
-        setState { it.copy(contents = contents) }
+        setState { it.copy(contents = parse.contents) }
 
         contentsJob?.cancel()
         contentsJob = ioLaunch {
             delay(5000)
 
-            val blocks = contents.mapIndexed { index, textBlock ->
+            val blocks = parse.contents.mapIndexed { index, textBlock ->
                 stateNow.blocks.firstOrNull { it.text == textBlock }?.copy(position = index)?.toEntity()
                     ?: BlockEntity(
                         blockId = BlockId.random(),
                         documentId = document.documentId,
                         text = textBlock,
                         position = index,
-                        createdAt = now
+                        level = parse.blocks[index].markdown.toBlockLevel(),
+                        createdAt = now,
                     )
             }
 
@@ -139,11 +141,6 @@ data class JournalState(
     // val tags: List<Tag> = emptyList(),
     val contents: List<String> = emptyList(),
     // val activeTagId: Set<TagId> = emptySet()
-)
-
-@Serializable
-data class JournalExport(
-    val blocks: List<Block>
 )
 
 fun entryFormat(entryNumber: Int, date: LocalDate): String {
@@ -180,3 +177,9 @@ private val ordinals = listOf(
 private val yearDesignations = mapOf(
     2025 to "First Year My Petunias Grew Back"
 )
+
+private fun MarkdownBlock.toBlockLevel() = when (this) {
+    is HeadingBlock -> level
+    is ParagraphBlock -> 0
+    is QuoteBlock -> null
+}

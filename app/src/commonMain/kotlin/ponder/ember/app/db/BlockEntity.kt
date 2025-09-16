@@ -26,6 +26,7 @@ data class BlockEntity(
     // val label: String?,
     val text: String,
     val position: Int,
+    val level: Int?,
     val createdAt: Instant
 )
 
@@ -57,5 +58,6 @@ fun Block.toEntity() = BlockEntity(
     documentId = documentId,
     text = text,
     position = position,
-    createdAt = createdAt
+    createdAt = createdAt,
+    level = level
 )

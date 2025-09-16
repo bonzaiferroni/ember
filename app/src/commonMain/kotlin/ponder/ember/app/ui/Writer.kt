@@ -36,7 +36,7 @@ import pondui.ui.theme.Pond
 @Composable
 fun Writer(
     content: WriterContent,
-    onValueChange: (List<String>) -> Unit,
+    onValueChange: (WriterParse) -> Unit,
     modifier: Modifier = Modifier,
     styles: StyleSet? = null
 ) {
@@ -172,6 +172,15 @@ fun Writer(
 data class WriterContent(
     val contents: List<String>
 )
+
+interface WriterParse {
+    val contents: List<String>
+    val blocks: List<ParsedBlock>
+}
+
+interface ParsedBlock {
+    val markdown: MarkdownBlock
+}
 
 private val modifierKeys = setOf(
     Key.ShiftLeft,
