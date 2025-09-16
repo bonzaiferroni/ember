@@ -37,15 +37,28 @@ import pondui.ui.theme.Pond
 fun Writer(
     content: WriterContent,
     onValueChange: (List<String>) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    styles: StyleSet? = null
 ) {
     val resolver = LocalFontFamilyResolver.current
     val density = LocalDensity.current
-    val style = Pond.typo.body
     val clipBoard = LocalClipboardManager.current
     var blockWidthPx by remember { mutableIntStateOf(0) }
+    val typography = Pond.typo
+    val colors = Pond.colors
+    val styles = styles ?: remember {
+        StyleSet(
+            paragraph = typography.body,
+            h1 = typography.h1,
+            h2 = typography.h2,
+            h3 = typography.h3,
+            h4 = typography.h4,
+            h5 = typography.h5,
+            symbolColor = colors.selection
+        )
+    }
     val model = remember { WriterModel(
-        style = style,
+        styles = styles,
         density = density,
         resolver = resolver,
         onValueChange = onValueChange

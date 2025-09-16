@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun WriterBlock(
-    block: WriterBlock,
+    block: TextBlock,
     caret: Caret?,
     selection: Selection?,
 ) {

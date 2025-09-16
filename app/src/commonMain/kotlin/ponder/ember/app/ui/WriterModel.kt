@@ -3,19 +3,18 @@ package ponder.ember.app.ui
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.Paragraph
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 internal class WriterModel(
-    private val style: TextStyle,
+    private val styles: StyleSet,
     private val density: Density,
     private val resolver: FontFamily.Resolver,
     val onValueChange: (List<String>) -> Unit,
     val blockParser: BlockParser = BlockParser(
-        style = style,
+        styles = styles,
         density = density,
         resolver = resolver
     )
@@ -157,7 +156,7 @@ internal class WriterModel(
 internal data class WriterState(
     val contents: List<String> = emptyList(),
     val blockWidthPx: Int = 0,
-    val blocks: List<WriterBlock> = listOf(WriterBlock.Empty),
+    val blocks: List<TextBlock> = listOf(TextBlock.Empty),
     val caret: Caret = Caret.Home,
     val selectCaret: Caret? = null,
     val bodyLength: Int = 0,
@@ -184,21 +183,22 @@ internal data class Selection(
 }
 
 @Stable
-internal data class WriterBlock(
+internal data class TextBlock(
     val content: String,
     val paragraph: Paragraph?,
-    val lines: List<WriterLine>,
+    val lines: List<TextLine>,
     val blockIndex: Int,
     val bodyIndex: Int,
+    val markdown: MarkdownBlock
 ) {
     val bodyIndexEnd get() = bodyIndex + content.length
 
     companion object {
-        val Empty = WriterBlock("", null, emptyList(), 0, 0)
+        val Empty = TextBlock("", null, emptyList(), 0, 0, ParagraphBlock(emptyList()))
     }
 }
 
-internal data class WriterLine(
+internal data class TextLine(
     val lineIndex: Int,
     val bodyIndex: Int,
     val contentIndex: Int,
