@@ -13,7 +13,7 @@ data class Block(
     // val label: String?,
     val text: String,
     val position: Int,
-    val level: Int? = 0,
+    val level: Int?,
     val createdAt: Instant
 )
 

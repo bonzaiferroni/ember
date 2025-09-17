@@ -123,7 +123,7 @@ class JournalModel(
 
     fun newDocument() {
         ioLaunch {
-            val entryNumber = Clock.startOfDay().let { dao.document.readIdsWithinRange(it, it + 1.days) }.size
+            val entryNumber = Clock.startOfDay().let { dao.document.readIdsWithinRange(it, it + 1.days) }.size + 1
             val date = Clock.today()
             val documentId = Document(
                 documentId = DocumentId.random(),
@@ -149,15 +149,15 @@ fun entryFormat(entryNumber: Int, date: LocalDate): String {
     val year = yearDesignations[date.year]
 
     val entryPrefix = if (entryNumber == 1) {
-        "Entry for the"
+        "Entry for The"
     } else {
-        "${numberToOrdinalWord(entryNumber)} Entry for the"
+        "${numberToOrdinalWord(entryNumber)} Entry for The"
     }
 
     val dayWord = numberToOrdinalWord(day)
     val monthWord = numberToOrdinalWord(month)
 
-    return "$entryPrefix $dayWord Day of the $monthWord Month in the $year"
+    return "$entryPrefix $dayWord Day of The $monthWord Month in The $year"
 }
 
 fun numberToOrdinalWord(n: Int): String {

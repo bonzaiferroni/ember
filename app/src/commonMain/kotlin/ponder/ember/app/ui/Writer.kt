@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.AnnotatedString
 import pondui.ui.controls.LazyColumn
 import pondui.ui.theme.Pond
+import pondui.utils.lighten
 
 @Composable
 fun Writer(
@@ -46,15 +47,16 @@ fun Writer(
     var blockWidthPx by remember { mutableIntStateOf(0) }
     val typography = Pond.typo
     val colors = Pond.colors
+    val localColors = Pond.localColors
     val styles = styles ?: remember {
         StyleSet(
-            paragraph = typography.body,
+            paragraph = typography.body.copy(color = localColors.content),
             h1 = typography.h1,
             h2 = typography.h2,
             h3 = typography.h3,
             h4 = typography.h4,
             h5 = typography.h5,
-            symbolColor = colors.selection
+            symbolColor = colors.selection.lighten(.3f)
         )
     }
     val model = remember { WriterModel(

@@ -14,6 +14,7 @@ class BlockParser(
     private val styles: StyleSet,
     private val density: Density,
     private val resolver: FontFamily.Resolver,
+    private val markdownParser: MarkdownParser = MarkdownParser()
 ) {
     internal fun buildBlockContent(
         content: String,
@@ -22,7 +23,7 @@ class BlockParser(
         blockWidthPx: Int,
     ): TextBlock {
 
-        val markdown = parseMarkdown(content)
+        val markdown = markdownParser.parse(content)
         val annotations = markdown.getAnnotations(styles)
 
         val paragraph = Paragraph(
