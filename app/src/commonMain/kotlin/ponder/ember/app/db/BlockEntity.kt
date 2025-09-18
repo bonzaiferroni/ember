@@ -36,23 +36,6 @@ data class BlockTagEntity(
     val tagId: TagId,
 )
 
-@Suppress("ArrayInDataClass")
-@Entity(
-    foreignKeys = [
-        ForeignKey(BlockEntity::class, ["blockId"], ["blockId"], ForeignKey.CASCADE)
-    ],
-    indices = [Index("blockId")]
-)
-data class BlockEmbedding(
-    @PrimaryKey(autoGenerate = true)
-    val blockEmbeddingId: BlockEmbeddingId = BlockEmbeddingId(0L),
-    val blockId: BlockId,
-    val embedding: FloatArray,
-)
-
-@JvmInline
-value class BlockEmbeddingId(override val value: Long): TableId<Long>
-
 fun Block.toEntity() = BlockEntity(
     blockId = blockId,
     documentId = documentId,

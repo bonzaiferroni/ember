@@ -10,7 +10,7 @@ internal class WriterModel(
     private val styles: StyleSet,
     private val density: Density,
     private val resolver: FontFamily.Resolver,
-    val onValueChange: (WriterParse) -> Unit,
+    val onValueChange: (WriterBody) -> Unit,
     val blockParser: BlockParser = BlockParser(
         styles = styles,
         density = density,
@@ -146,7 +146,6 @@ internal class WriterModel(
     }
 }
 
-
 internal data class WriterState(
     override val contents: List<String> = emptyList(),
     override val blocks: List<TextBlock> = listOf(TextBlock.Empty),
@@ -154,7 +153,7 @@ internal data class WriterState(
     val caret: Caret = Caret.Home,
     val selectCaret: Caret? = null,
     val bodyLength: Int = 0,
-): WriterParse {
+): WriterBody {
     val selection get() = when {
         selectCaret == null -> null
         selectCaret.bodyIndex > caret.bodyIndex -> Selection(caret, selectCaret)
@@ -166,25 +165,4 @@ internal data class WriterState(
     val bodyText by lazy { contents.joinToString("\n") }
 
     val selectedText get() = selection?.let { bodyText.substring(it.start.bodyIndex, it.end.bodyIndex) }
-}
-
-internal data class Selection(
-    val start: Caret,
-    val end: Caret
-) {
-    val isMultiBlock get() = start.blockIndex != end.blockIndex
-    val length get() = end.bodyIndex - start.bodyIndex
-}
-
-internal data class Caret(
-    val bodyIndex: Int,
-    val contentIndex: Int,
-    val blockIndex: Int,
-    val lineIndex: Int,
-    val offsetX: Float,
-    val preferredOffsetX: Float
-) {
-    companion object {
-        val Home = Caret(0, 0, 0, 0, 0f, 0f)
-    }
 }

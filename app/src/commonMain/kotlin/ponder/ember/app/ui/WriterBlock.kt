@@ -29,6 +29,7 @@ internal fun WriterBlock(
     block: TextBlock,
     caret: Caret?,
     selection: Selection?,
+    modifier: Modifier = Modifier
 ) {
     val paragraph = block.paragraph ?: return
 
@@ -59,7 +60,7 @@ internal fun WriterBlock(
 
     val selectionColor = Color.Cyan.copy(.3f)
 
-    Box {
+    Box(modifier = modifier) {
         selectionLines?.forEach { (topLeft, size) ->
             Box(
                 modifier = Modifier.drawBehind {

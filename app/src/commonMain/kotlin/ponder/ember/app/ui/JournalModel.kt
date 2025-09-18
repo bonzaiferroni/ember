@@ -1,14 +1,18 @@
 package ponder.ember.app.ui
 
 import kabinet.clients.OllamaClient
+import kabinet.utils.cosineDistance
 import kabinet.utils.startOfDay
 import kabinet.utils.today
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.Serializable
 import ponder.ember.app.AppProvider
 import ponder.ember.app.db.AppDao
 import ponder.ember.app.db.BlockEmbedding
@@ -23,22 +27,20 @@ import pondui.ui.core.StateModel
 import kotlin.time.Duration.Companion.days
 
 class JournalModel(
-    initialDocumentId: DocumentId?,
-    val dao: AppDao = AppProvider.dao,
-    val ollama: OllamaClient = OllamaClient()
+    private val dao: AppDao = AppProvider.dao,
+    private val ollama: OllamaClient = OllamaClient()
 ) : StateModel<JournalState>() {
     override val state = ModelState(JournalState())
 
-    private var allEmbeddings: List<BlockEmbedding> = emptyList()
-    private var embedding: FloatArray? = null
-    private var distances: List<Float> = emptyList()
+    private var otherEmbeddings: List<BlockEmbedding> = emptyList()
+    var maxDistance = Float.MIN_VALUE
 
-    init {
-        loadDocument(initialDocumentId)
-    }
+    private val mutex = Mutex()
+    private val distances: MutableMap<BlockId, List<EmbeddingDistance>> = mutableMapOf()
 
     private var loadJob: Job? = null
-    private fun loadDocument(documentId: DocumentId?) {
+    fun loadDocument(documentId: DocumentId?) {
+        if (documentId == stateNow.document?.documentId) return
         var initializedBlocks = false
         loadJob?.cancel()
         loadJob = ioLaunch {
@@ -80,6 +82,12 @@ class JournalModel(
                     }
                 }
             }
+
+            launch {
+                dao.embedding.flowByNotDocumentId(documentId).collect { embeddings ->
+                    otherEmbeddings = embeddings
+                }
+            }
         }
     }
 
@@ -91,34 +99,80 @@ class JournalModel(
     }
 
     private var contentsJob: Job? = null
-    fun setContents(parse: WriterParse) {
+    fun setContents(body: WriterBody) {
         val document = stateNow.document ?: return
         val now = Clock.System.now()
-        setState { it.copy(contents = parse.contents) }
+        setState { it.copy(contents = body.contents) }
 
         contentsJob?.cancel()
         contentsJob = ioLaunch {
             delay(5000)
 
-            val blocks = parse.contents.mapIndexed { index, textBlock ->
-                stateNow.blocks.firstOrNull { it.text == textBlock }?.copy(position = index)?.toEntity()
-                    ?: BlockEntity(
+            val newBlocks = mutableListOf<Block>()
+            val blocks = body.contents.mapIndexed { index, textBlock ->
+                stateNow.blocks.firstOrNull { it.text == textBlock }?.copy(position = index)
+                    ?: Block(
                         blockId = BlockId.random(),
                         documentId = document.documentId,
                         text = textBlock,
                         position = index,
-                        level = parse.blocks[index].markdown.toBlockLevel(),
+                        level = body.blocks[index].markdown.toBlockLevel(),
                         createdAt = now,
-                    )
+                    ).also { newBlocks.add(it)}
             }
 
-            dao.block.deleteByIds(stateNow.blocks.filter { b -> blocks.none { it.blockId == b.blockId } }.map { it.blockId})
-            dao.block.upsert(blocks)
+            val deletedBlocks = stateNow.blocks.filter { b -> blocks.none { it.blockId == b.blockId } }
 
-            // val vector = ollama.embed(value)?.embeddings?.firstOrNull() ?: return@ioLaunch
-            // distances = allEmbeddings.map { cosineDistance(vector, it.embedding) }
-            // embedding = vector
+            dao.block.deleteByIds(deletedBlocks.map { it.blockId})
+            dao.block.upsert(blocks.map { it.toEntity()})
+
+            newBlocks.map { block ->
+                async {
+                    val level = block.level ?: return@async
+                    if (level != 0) return@async
+                    val embedding = ollama.embed(block.text)?.embeddings?.firstOrNull() ?: return@async
+                    dao.embedding.insert(BlockEmbedding(
+                        blockId = block.blockId,
+                        embedding = embedding
+                    ))
+                    val blockDistances = otherEmbeddings.mapNotNull { blockEmbedding ->
+                        val distance = cosineDistance(embedding, blockEmbedding.embedding)
+                        maxDistance = maxOf(maxDistance, distance)
+                        val scaledDistance = (distance / maxDistance).takeIf { it < .8f } ?: return@mapNotNull null
+                        EmbeddingDistance(
+                            distance = scaledDistance,
+                            blockId = blockEmbedding.blockId
+                        )
+                    }.sortedBy { it.distance }.take(10)
+                    mutex.withLock {
+                        distances[block.blockId] = blockDistances
+                    }
+                }
+            }.awaitAll()
+
+            deletedBlocks.forEach { block ->
+                distances.remove(block.blockId)
+            }
+
+            refreshProximities()
         }
+    }
+
+    fun setActiveBlock(index: Int) {
+        setState { it.copy(activeBlockIndex = index) }
+        ioLaunch {
+            refreshProximities()
+        }
+    }
+
+    private suspend fun refreshProximities() {
+        val block = stateNow.blocks.getOrNull(stateNow.activeBlockIndex) ?: return
+        val proximityDistances = distances[block.blockId] ?: return
+        val blocks = dao.block.readByIds(proximityDistances.map { it.blockId })
+        val proximityBlocks = proximityDistances.map {
+                pd -> ProximityBlock(pd.distance, blocks.first { it.blockId == pd.blockId})
+        }
+        setStateFromMain { it.copy(proximityBlocks = proximityBlocks)}
     }
 
     fun newDocument() {
@@ -141,6 +195,8 @@ data class JournalState(
     // val tags: List<Tag> = emptyList(),
     val contents: List<String> = emptyList(),
     // val activeTagId: Set<TagId> = emptySet()
+    val activeBlockIndex: Int = 0,
+    val proximityBlocks: List<ProximityBlock> = emptyList()
 )
 
 fun entryFormat(entryNumber: Int, date: LocalDate): String {
@@ -183,3 +239,15 @@ private fun MarkdownBlock.toBlockLevel() = when (this) {
     is ParagraphBlock -> 0
     is QuoteBlock -> null
 }
+
+data class EmbeddingDistance(
+    val distance: Float,
+    val blockId: BlockId,
+)
+
+data class ProximityBlock(
+    val distance: Float,
+    val block: Block
+)
+
+const val MAX_PROXIMITY = .5f

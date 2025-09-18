@@ -21,9 +21,6 @@ interface BlockDao {
     @Insert
     suspend fun insert(blocks: List<BlockEntity>): LongArray
 
-    @Insert
-    suspend fun insert(vararg embedding: BlockEmbedding): LongArray
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(block: BlockEntity): Long
 
@@ -48,9 +45,6 @@ interface BlockDao {
     @Query("SELECT * FROM BlockEntity")
     suspend fun readAll(): List<Block>
 
-    @Query("SELECT * FROM BlockEmbedding")
-    fun flowAllEmbeddings(): Flow<List<BlockEmbedding>>
-
     @Query("SELECT blockId, text FROM BlockEntity")
     fun flowAllText(): Flow<Map<@MapColumn("blockId") BlockId, @MapColumn("text") String>>
 
@@ -59,4 +53,12 @@ interface BlockDao {
 
     @Query("SELECT count(*) FROM BlockEntity WHERE documentId = :documentId")
     suspend fun readBlockCount(documentId: DocumentId): Int
+
+    @Query("SELECT * FROM BlockEntity WHERE blockId IN (:blockIds)")
+    suspend fun readByIds(blockIds: List<BlockId>): List<Block>
+
+    @Query("SELECT b.* FROM BlockEntity AS b " +
+            "LEFT JOIN BlockEmbedding AS be ON b.blockId = be.blockId " +
+            "WHERE b.level = 0 AND be.embedding IS NULL")
+    suspend fun readNullEmbeddings(): List<Block>
 }

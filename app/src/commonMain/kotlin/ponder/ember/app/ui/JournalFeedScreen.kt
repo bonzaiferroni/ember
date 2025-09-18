@@ -8,9 +8,11 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Plus
+import compose.icons.tablericons.Refresh
 import ponder.ember.app.JournalRoute
 import pondui.ui.controls.Button
 import pondui.ui.controls.LazyScaffold
+import pondui.ui.controls.ProgressBar
 import pondui.ui.controls.Row
 import pondui.ui.controls.Scaffold
 import pondui.ui.controls.Text
@@ -26,7 +28,16 @@ fun JournalFeedScreen(
     LazyScaffold {
         item("header") {
             Row(1) {
-                Button(TablerIcons.Plus) { nav.go(JournalRoute()) }
+                Row(1, modifier = Modifier.weight(1f)) {
+                    Button(TablerIcons.Plus) { nav.go(JournalRoute()) }
+                    Button(TablerIcons.Refresh, onClick = viewModel::refreshEmbeddings)
+                }
+                state.count?.let {
+                    val ratio = state.progress / it.toFloat()
+                    ProgressBar(ratio) {
+                        Text("${state.progress} of ${state.count}")
+                    }
+                }
             }
         }
         items(state.documents) { document ->

@@ -24,6 +24,7 @@ import kotlin.time.Duration.Companion.milliseconds
 abstract class AppDatabase : RoomDatabase() {
     abstract fun getBlockDao(): BlockDao
     abstract fun getDocumentDao(): DocumentDao
+    abstract fun getBlockEmbeddingDao(): BlockEmbeddingDao
     // abstract fun getStarDao(): StarDao
     // abstract fun getGalaxyDao(): GalaxyDao
 }

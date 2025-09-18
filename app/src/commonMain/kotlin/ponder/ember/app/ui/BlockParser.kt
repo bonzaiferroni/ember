@@ -38,6 +38,7 @@ class BlockParser(
         )
 
         return TextBlock(
+            textBlockId = TextBlockId.random(),
             content = content,
             paragraph = paragraph,
             lines = List(paragraph.lineCount) { lineIndex ->

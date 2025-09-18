@@ -2,7 +2,7 @@ package ponder.ember.app.ui
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,9 +37,10 @@ import pondui.utils.lighten
 @Composable
 fun Writer(
     content: WriterContent,
-    onValueChange: (WriterParse) -> Unit,
+    onValueChange: (WriterBody) -> Unit,
+    onActiveBlockChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    styles: StyleSet? = null
+    styles: StyleSet? = null,
 ) {
     val resolver = LocalFontFamilyResolver.current
     val density = LocalDensity.current
@@ -76,7 +77,12 @@ fun Writer(
     val caret = state.caret
     val selection = state.selection
 
+    LaunchedEffect(state.caret.blockIndex) {
+        onActiveBlockChange(state.caret.blockIndex)
+    }
+
     LaunchedEffect(Unit) {
+        // for debug purposes
         focusRequester.requestFocus()
     }
 
@@ -157,7 +163,7 @@ fun Writer(
                 isConsumed
             }
     ) {
-        items(state.blocks, { it.blockIndex } ) { block ->
+        itemsIndexed(state.blocks, { _, it -> it.blockIndex } ) { index, block ->
             val isCaretPresent = isFocused && caret.bodyIndex >= block.bodyIndex && caret.bodyIndex <= block.bodyIndexEnd
             val isSelectionPresent = selection != null && selection.start.bodyIndex < block.bodyIndexEnd
                     && selection.end.bodyIndex > block.bodyIndex
@@ -175,7 +181,7 @@ data class WriterContent(
     val contents: List<String>
 )
 
-interface WriterParse {
+interface WriterBody {
     val contents: List<String>
     val blocks: List<ParsedBlock>
 }
