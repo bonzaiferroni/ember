@@ -1,19 +1,24 @@
 package ponder.ember.app.ui
 
+import androidx.lifecycle.viewModelScope
 import kabinet.clients.OllamaClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ponder.ember.app.AppDao
 import ponder.ember.app.AppProvider
-import ponder.ember.app.db.AppDao
+import ponder.ember.app.AppService
 import ponder.ember.app.db.BlockEmbedding
 import ponder.ember.model.data.Document
+import ponder.ember.model.data.DocumentId
 import pondui.ui.core.ModelState
 import pondui.ui.core.StateModel
 
 class JournalFeedModel(
     private val dao: AppDao = AppProvider.dao,
+    private val service: AppService = AppProvider.service,
     private val ollama: OllamaClient = OllamaClient()
 ): StateModel<JournalFeedState>() {
     override val state = ModelState(JournalFeedState())
@@ -47,6 +52,12 @@ class JournalFeedModel(
             }.awaitAll()
 
             setStateFromMain{ it.copy(progress = 0, count = null) }
+        }
+    }
+
+    fun newDocument(block: (DocumentId) -> Unit) {
+        viewModelScope.launch {
+            block(service.document.create())
         }
     }
 }

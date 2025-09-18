@@ -34,7 +34,6 @@ val appConfig = PondConfig(
     ),
     doors = persistentListOf(
         PortalDoor(TablerIcons.List, JournalFeedRoute, "Feed"),
-        PortalDoor(TablerIcons.Edit, JournalRoute()),
         // PortalDoor(TablerIcons.Edit, WriterRoute),
         // PortalDoor(TablerIcons.Rocket, ExampleListRoute),
     ),

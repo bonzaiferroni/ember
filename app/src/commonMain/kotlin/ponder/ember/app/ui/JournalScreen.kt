@@ -12,6 +12,7 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.lifecycle.viewmodel.compose.viewModel
 import compose.icons.TablerIcons
 import compose.icons.tablericons.Check
+import compose.icons.tablericons.ChevronRight
 import kabinet.utils.format
 import ponder.ember.app.JournalRoute
 import ponder.ember.model.data.DocumentId
@@ -27,24 +28,21 @@ import pondui.ui.controls.Tabs
 import pondui.ui.controls.Text
 import pondui.ui.controls.TextField
 import pondui.ui.controls.actionable
+import pondui.ui.nav.LocalNav
 
 @Composable
 fun JournalScreen(
     route: JournalRoute,
-    viewModel: JournalModel = viewModel (key = route.documentId) { JournalModel() }
+    viewModel: JournalModel = viewModel (key = route.documentId) { JournalModel(route.toDocumentId()) }
 ) {
     val state by viewModel.stateFlow.collectAsState()
-
-    LaunchedEffect(Unit) {
-        viewModel.loadDocument(route.documentId.takeIf { it.isNotEmpty() }?.let { DocumentId(it) })
-    }
-
     val document = state.document ?: return
+    val nav = LocalNav.current
 
     Scaffold {
         Row(1) {
             TextField(document.label, onValueChange = viewModel::setLabel, modifier = Modifier.weight(1f))
-            Button(TablerIcons.Check, onClick = viewModel::newDocument)
+            Button(TablerIcons.ChevronRight, onClick = { viewModel.newDocument { nav.go(JournalRoute(it.value)) }})
         }
         Row(1, verticalAlignment = Alignment.Top) {
             Section(modifier = Modifier.weight(1f)) {
@@ -54,32 +52,32 @@ fun JournalScreen(
                     onActiveBlockChange = viewModel::setActiveBlock
                 )
             }
-            Box(modifier = Modifier.weight(1f)) {
-                MagicItem(state.blocks.getOrNull(state.activeBlockIndex), scale = .5f) { block ->
-                    val block = block ?: return@MagicItem
-                    Tabs {
-                        Tab("Proximities") {
-                            state.proximityBlocks.forEach { proxBlock ->
-                                Section {
-                                    Column(1) {
-                                        val proximity = 1 - proxBlock.distance
-                                        ProgressBar(proximity) {
-                                            Text(proximity.format(2))
-                                        }
-                                        Text(
-                                            text = proxBlock.block.text,
-                                            modifier = Modifier.actionable(
-                                                route = JournalRoute(documentId = block.documentId.value),
-                                                icon = PointerIcon.Hand
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+//            Box(modifier = Modifier.weight(1f)) {
+//                MagicItem(state.blocks.getOrNull(state.activeBlockIndex), scale = .5f) { block ->
+//                    val block = block ?: return@MagicItem
+//                    Tabs {
+//                        Tab("Proximities") {
+//                            state.proximityBlocks.forEach { proxBlock ->
+//                                Section {
+//                                    Column(1) {
+//                                        val proximity = 1 - proxBlock.distance
+//                                        ProgressBar(proximity) {
+//                                            Text(proximity.format(2))
+//                                        }
+//                                        Text(
+//                                            text = proxBlock.block.text,
+//                                            modifier = Modifier.actionable(
+//                                                route = JournalRoute(documentId = block.documentId.value),
+//                                                icon = PointerIcon.Hand
+//                                            )
+//                                        )
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
         }
     }
 }

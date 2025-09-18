@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import compose.icons.TablerIcons
+import compose.icons.tablericons.ChevronRight
 import compose.icons.tablericons.Plus
 import compose.icons.tablericons.Refresh
 import ponder.ember.app.JournalRoute
@@ -29,7 +30,7 @@ fun JournalFeedScreen(
         item("header") {
             Row(1) {
                 Row(1, modifier = Modifier.weight(1f)) {
-                    Button(TablerIcons.Plus) { nav.go(JournalRoute()) }
+                    Button(TablerIcons.Plus, onClick = { viewModel.newDocument { nav.go(JournalRoute(it.value)) }})
                     Button(TablerIcons.Refresh, onClick = viewModel::refreshEmbeddings)
                 }
                 state.count?.let {

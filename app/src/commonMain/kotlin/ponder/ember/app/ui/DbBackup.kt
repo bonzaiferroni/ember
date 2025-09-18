@@ -17,8 +17,8 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
+import ponder.ember.app.AppDao
 import ponder.ember.app.AppProvider
-import ponder.ember.app.db.AppDao
 import ponder.ember.app.db.toEntity
 import ponder.ember.model.data.Block
 import ponder.ember.model.data.Document

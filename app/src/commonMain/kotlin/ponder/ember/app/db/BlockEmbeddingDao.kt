@@ -53,4 +53,9 @@ interface BlockEmbeddingDao {
             "JOIN BlockEntity AS b ON b.blockID = be.blockId " +
             "WHERE b.documentId != :documentId")
     fun flowByNotDocumentId(documentId: DocumentId): Flow<List<BlockEmbedding>>
+
+    @Query("SELECT be.* FROM BlockEmbedding AS be " +
+            "JOIN BlockEntity AS b ON b.blockID = be.blockId " +
+            "WHERE b.documentId = :documentId")
+    suspend fun readByDocumentId(documentId: DocumentId): List<BlockEmbedding>
 }

@@ -1,9 +1,8 @@
 package ponder.ember.app.ui
 
+import androidx.lifecycle.viewModelScope
 import kabinet.clients.OllamaClient
 import kabinet.utils.cosineDistance
-import kabinet.utils.startOfDay
-import kabinet.utils.today
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -13,10 +12,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import ponder.ember.app.AppDao
 import ponder.ember.app.AppProvider
-import ponder.ember.app.db.AppDao
+import ponder.ember.app.AppService
 import ponder.ember.app.db.BlockEmbedding
-import ponder.ember.app.db.BlockEntity
 import ponder.ember.app.db.toEntity
 import ponder.ember.model.data.Block
 import ponder.ember.model.data.BlockId
@@ -24,10 +23,11 @@ import ponder.ember.model.data.Document
 import ponder.ember.model.data.DocumentId
 import pondui.ui.core.ModelState
 import pondui.ui.core.StateModel
-import kotlin.time.Duration.Companion.days
 
 class JournalModel(
+    documentId: DocumentId,
     private val dao: AppDao = AppProvider.dao,
+    private val service: AppService = AppProvider.service,
     private val ollama: OllamaClient = OllamaClient()
 ) : StateModel<JournalState>() {
     override val state = ModelState(JournalState())
@@ -38,31 +38,13 @@ class JournalModel(
     private val mutex = Mutex()
     private val distances: MutableMap<BlockId, List<EmbeddingDistance>> = mutableMapOf()
 
-    private var loadJob: Job? = null
-    fun loadDocument(documentId: DocumentId?) {
-        if (documentId == stateNow.document?.documentId) return
+    init {
         var initializedBlocks = false
-        loadJob?.cancel()
-        loadJob = ioLaunch {
-            val documentId = documentId
-                ?: Clock.startOfDay().let { dao.document.readIdsWithinRange(it, it + 1.days) }.lastOrNull()
-                ?: Document(
-                    documentId = DocumentId.random(),
-                    label = entryFormat(1, Clock.today()),
-                    createdAt = Clock.System.now()
-                ).also { dao.document.insert(it.toEntity()) }.documentId
-
-            if (dao.block.readBlockCount(documentId) == 0) {
-                dao.block.insert(
-                    BlockEntity(
-                        blockId = BlockId.random(),
-                        documentId = documentId,
-                        text = "",
-                        position = 0,
-                        level = 0,
-                    createdAt = Clock.System.now()
-                    )
-                )
+        ioLaunch {
+            launch {
+                dao.embedding.readByDocumentId(documentId).forEach { blockEmbedding ->
+                    gatherProximityBlocks(blockEmbedding.blockId, blockEmbedding.embedding)
+                }
             }
 
             launch {
@@ -75,7 +57,7 @@ class JournalModel(
                 dao.block.flowByDocumentId(documentId).collect { blocks ->
                     val contents = if (!initializedBlocks) {
                         initializedBlocks = true
-                        blocks.map { it.text }
+                        blocks.takeIf { it.isNotEmpty() }?.map { it.text } ?: listOf("")
                     } else stateNow.contents
                     setStateFromMain { state ->
                         state.copy(blocks = blocks.sortedBy { it.position }, contents = contents)
@@ -135,18 +117,7 @@ class JournalModel(
                         blockId = block.blockId,
                         embedding = embedding
                     ))
-                    val blockDistances = otherEmbeddings.mapNotNull { blockEmbedding ->
-                        val distance = cosineDistance(embedding, blockEmbedding.embedding)
-                        maxDistance = maxOf(maxDistance, distance)
-                        val scaledDistance = (distance / maxDistance).takeIf { it < .8f } ?: return@mapNotNull null
-                        EmbeddingDistance(
-                            distance = scaledDistance,
-                            blockId = blockEmbedding.blockId
-                        )
-                    }.sortedBy { it.distance }.take(10)
-                    mutex.withLock {
-                        distances[block.blockId] = blockDistances
-                    }
+                    gatherProximityBlocks(block.blockId, embedding)
                 }
             }.awaitAll()
 
@@ -165,6 +136,21 @@ class JournalModel(
         }
     }
 
+    private suspend fun gatherProximityBlocks(blockId: BlockId, embedding: FloatArray) {
+        val blockDistances = otherEmbeddings.mapNotNull { blockEmbedding ->
+            val distance = cosineDistance(embedding, blockEmbedding.embedding)
+            maxDistance = maxOf(maxDistance, distance)
+            val scaledDistance = (distance / maxDistance).takeIf { it < .4f } ?: return@mapNotNull null
+            EmbeddingDistance(
+                distance = scaledDistance,
+                blockId = blockEmbedding.blockId
+            )
+        }.sortedBy { it.distance }.take(10)
+        mutex.withLock {
+            distances[blockId] = blockDistances
+        }
+    }
+
     private suspend fun refreshProximities() {
         val block = stateNow.blocks.getOrNull(stateNow.activeBlockIndex) ?: return
         val proximityDistances = distances[block.blockId] ?: return
@@ -175,16 +161,9 @@ class JournalModel(
         setStateFromMain { it.copy(proximityBlocks = proximityBlocks)}
     }
 
-    fun newDocument() {
-        ioLaunch {
-            val entryNumber = Clock.startOfDay().let { dao.document.readIdsWithinRange(it, it + 1.days) }.size + 1
-            val date = Clock.today()
-            val documentId = Document(
-                documentId = DocumentId.random(),
-                label = entryFormat(entryNumber, date),
-                createdAt = Clock.System.now()
-            ).also { dao.document.insert(it.toEntity()) }.documentId
-            loadDocument(documentId)
+    fun newDocument(block: (DocumentId) -> Unit) {
+        viewModelScope.launch {
+            block(service.document.create())
         }
     }
 }

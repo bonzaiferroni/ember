@@ -1,6 +1,7 @@
 package ponder.ember.app
 
 import kotlinx.serialization.Serializable
+import ponder.ember.model.data.DocumentId
 import pondui.ui.nav.AppRoute
 import pondui.ui.nav.IdRoute
 import pondui.ui.nav.matchLongIdRoute
@@ -27,7 +28,10 @@ data class ExampleProfileRoute(val exampleId: Long) : AppRoute(TITLE) {
 object WriterRoute : AppRoute("OldWriter")
 
 @Serializable
-data class JournalRoute(val documentId: String = "") : IdRoute<String>(TITLE, documentId) {
+data class JournalRoute(val documentId: String) : IdRoute<String>(TITLE, documentId) {
+
+    fun toDocumentId() = DocumentId(documentId)
+
     companion object {
         const val TITLE = "Journal"
         fun matchRoute(path: String) = matchStringIdRoute(path, TITLE) { JournalRoute(it) }
