@@ -54,7 +54,7 @@ internal class WriterModel(
 
     fun addTextAtCaret(text: String) {
         val initialContents = stateNow.selection?.let { stateNow.contents.removeRange(it) } ?: stateNow.contents
-        val caret = stateNow.caret
+        val caret = stateNow.selection?.start ?: stateNow.caret
         val contents = initialContents.insertText(caret, text)
         updateContents(contents, caret.bodyIndex + text.length)
     }
