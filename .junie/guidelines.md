@@ -84,6 +84,11 @@ CreateScreen(Foo):
     * If the variation on Foo is `FooProfile` you should create a `data class FooProfileRoute(val fooId: String) : IdRoute<String>("Foo", fooId)`. You should also pass the route as an argument to `FooProfileScreen`.
 * Add a call to `RouteConfig(FooRoute::MatchRoute) { defaultScreen<FooRoute> { FooScreen() } }` within the list definition assigned to routes in `appConfig.kt`.
 
+CreateViewWithModel(Foo):
+* You are doing something like CreateScreen(Foo) but instead of `FooScreen()` you'll make `FooView()` and the associated `FooModel` and `FooState`.
+* I repeat, you should *not* make a screen, stick to what I have asked. Just create the basic structure of FooView, FooModel, and FooState as I have outlined in the CreateScreen workflow.
+* This function does not have an associated route and there is nothing you need to add to `appConfig.kt`
+
 CreateEndpoint(Foo, functionName):
 * Create an endpoint in `ponder.ember.model.Api`. Try to determine based on Foo where it should go, look for where similar types are being served or create a new object under Api.
 * Based on the endpoint, add a function to *ApiClient, where * is the name of the endpoint. The name of the function is functionName.

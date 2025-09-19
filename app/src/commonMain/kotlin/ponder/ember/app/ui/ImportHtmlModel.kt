@@ -4,17 +4,17 @@ import kabinet.clients.HtmlClient
 import ponder.ember.app.AppProvider
 import pondui.ui.core.ModelState
 import pondui.ui.core.StateModel
+import java.io.File
 
-class ImportModel(
+class ImportHtmlModel(
     private val app: AppProvider = AppProvider,
-    private val htmlClient: HtmlClient = HtmlClient()
 ) : StateModel<ImportState>() {
     override val state = ModelState(ImportState())
 
     fun readUrl() {
         val url = stateNow.url.takeIf { it.isNotBlank() } ?: return
         ioLaunch {
-            val document = htmlClient.readUrl(url) ?: return@ioLaunch
+            val document = app.client.html.readUrl(url) ?: return@ioLaunch
             val content = buildString {
                 document.title?.let {
                     append("# ")
@@ -66,6 +66,13 @@ class ImportModel(
                 }
             }
             setStateFromMain { it.copy(progress = 0, work = null)}
+        }
+    }
+
+    fun importEpub(file: File) {
+        ioLaunch {
+            val epub = app.client.epub.read(file)
+
         }
     }
 }
