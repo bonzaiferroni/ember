@@ -1,6 +1,10 @@
 package ponder.ember.app.ui
 
 import androidx.lifecycle.viewModelScope
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.copyTo
+import io.github.vinceglb.filekit.createDirectories
+import io.github.vinceglb.filekit.path
 import kabinet.clients.OllamaClient
 import kabinet.utils.cosineDistance
 import kotlinx.coroutines.Job
@@ -166,14 +170,24 @@ class JournalModel(
             block(service.document.create())
         }
     }
+
+    fun saveImage(origin: PlatformFile) {
+        val document = stateNow.document ?: return
+        ioLaunch {
+            val path = "img/${origin.file.name}"
+            val directory = PlatformFile("img")
+            directory.createDirectories()
+            val destination = PlatformFile("${directory.path}/${origin.file.name}")
+            origin.copyTo(destination)
+            dao.document.update(document.copy(imagePath = path).toEntity())
+        }
+    }
 }
 
 data class JournalState(
     val document: Document? = null,
     val blocks: List<Block> = emptyList(),
-    // val tags: List<Tag> = emptyList(),
     val contents: List<String> = emptyList(),
-    // val activeTagId: Set<TagId> = emptySet()
     val activeBlockIndex: Int = 0,
     val proximityBlocks: List<ProximityBlock> = emptyList()
 )

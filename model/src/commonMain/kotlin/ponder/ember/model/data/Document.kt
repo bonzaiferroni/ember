@@ -10,7 +10,8 @@ import kotlin.jvm.JvmInline
 data class Document(
     val documentId: DocumentId,
     val label: String,
-    val createdAt: Instant
+    val imagePath: String? = null,
+    val createdAt: Instant,
 )
 
 @JvmInline

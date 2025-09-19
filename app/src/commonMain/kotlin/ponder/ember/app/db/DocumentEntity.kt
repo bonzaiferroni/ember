@@ -11,11 +11,13 @@ data class DocumentEntity(
     @PrimaryKey
     val documentId: DocumentId,
     val label: String,
+    val imagePath: String?,
     val createdAt: Instant
 )
 
 fun Document.toEntity() = DocumentEntity(
     documentId = documentId,
     label = label,
+    imagePath = imagePath,
     createdAt = createdAt
 )

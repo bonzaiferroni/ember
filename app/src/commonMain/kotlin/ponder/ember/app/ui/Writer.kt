@@ -2,6 +2,7 @@ package ponder.ember.app.ui
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -41,6 +42,7 @@ fun Writer(
     onActiveBlockChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
     styles: StyleSet? = null,
+    headerContent: @Composable LazyItemScope.() -> Unit,
 ) {
     val resolver = LocalFontFamilyResolver.current
     val density = LocalDensity.current
@@ -163,6 +165,8 @@ fun Writer(
                 isConsumed
             }
     ) {
+        item("header", content = headerContent)
+
         itemsIndexed(state.blocks, { _, it -> it.blockIndex } ) { index, block ->
             val isCaretPresent = isFocused && caret.bodyIndex >= block.bodyIndex && caret.bodyIndex <= block.bodyIndexEnd
             val isSelectionPresent = selection != null && selection.start.bodyIndex < block.bodyIndexEnd

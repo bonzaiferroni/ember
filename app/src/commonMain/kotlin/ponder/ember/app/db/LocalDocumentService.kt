@@ -18,6 +18,7 @@ class LocalDocumentService(
         return Document(
             documentId = DocumentId.random(),
             label = entryFormat(entryNumber, date),
+            imagePath = null,
             createdAt = Clock.System.now()
         ).also { dao.document.insert(it.toEntity()) }.documentId
     }

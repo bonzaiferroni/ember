@@ -2,10 +2,13 @@ package ponder.ember.app
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.font.FontWeight
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
 import ember.app.generated.resources.Inter_18pt_Regular
 import ember.app.generated.resources.Inter_24pt_Light
 import ember.app.generated.resources.Inter_28pt_Light
 import ember.app.generated.resources.Res
+import io.github.vinceglb.filekit.coil.addPlatformFileSupport
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import ponder.ember.app.ui.DbBackup
 import pondui.ui.core.PondApp
@@ -20,6 +23,12 @@ fun App(
     changeRoute: (NavRoute) -> Unit,
     exitApp: (() -> Unit)?,
 ) {
+    setSingletonImageLoaderFactory { context ->
+        ImageLoader.Builder(context)
+            .components { addPlatformFileSupport() }
+            .build()
+    }
+
     ProvideTheme(
         theme = defaultTheme(
             baseFont = useFamily(Res.font.Inter_18pt_Regular),

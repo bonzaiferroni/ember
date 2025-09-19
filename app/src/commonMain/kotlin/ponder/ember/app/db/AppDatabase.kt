@@ -17,7 +17,7 @@ import kotlin.time.Duration.Companion.milliseconds
         BlockEntity::class, BlockEmbedding::class,
         DocumentEntity::class,
         // StarEntity::class, GalaxyEntity::class
-    ], version = 10
+    ], version = 11
 )
 @ConstructedBy(AppDatabaseConstructor::class)
 @TypeConverters(Converters::class, FloatArrayConverter::class)
