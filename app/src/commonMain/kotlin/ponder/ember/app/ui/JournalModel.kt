@@ -30,9 +30,7 @@ import pondui.ui.core.StateModel
 
 class JournalModel(
     documentId: DocumentId,
-    private val dao: AppDao = AppProvider.dao,
-    private val service: AppService = AppProvider.service,
-    private val ollama: OllamaClient = OllamaClient()
+    private val app: AppProvider = AppProvider
 ) : StateModel<JournalState>() {
     override val state = ModelState(JournalState())
 
@@ -46,19 +44,19 @@ class JournalModel(
         var initializedBlocks = false
         ioLaunch {
             launch {
-                dao.embedding.readByDocumentId(documentId).forEach { blockEmbedding ->
+                app.dao.embedding.readByDocumentId(documentId).forEach { blockEmbedding ->
                     gatherProximityBlocks(blockEmbedding.blockId, blockEmbedding.embedding)
                 }
             }
 
             launch {
-                dao.document.flowDocumentById(documentId).collect { document ->
+                app.dao.document.flowDocumentById(documentId).collect { document ->
                     setStateFromMain { it.copy(document = document) }
                 }
             }
 
             launch {
-                dao.block.flowByDocumentId(documentId).collect { blocks ->
+                app.dao.block.flowByDocumentId(documentId).collect { blocks ->
                     val contents = if (!initializedBlocks) {
                         initializedBlocks = true
                         blocks.takeIf { it.isNotEmpty() }?.map { it.text } ?: listOf("")
@@ -70,7 +68,7 @@ class JournalModel(
             }
 
             launch {
-                dao.embedding.flowByNotDocumentId(documentId).collect { embeddings ->
+                app.dao.embedding.flowByNotDocumentId(documentId).collect { embeddings ->
                     otherEmbeddings = embeddings
                 }
             }
@@ -80,14 +78,13 @@ class JournalModel(
     fun setLabel(label: String) {
         val document = stateNow.document ?: return
         ioLaunch {
-            dao.document.update(document.copy(label = label).toEntity())
+            app.dao.document.update(document.copy(label = label).toEntity())
         }
     }
 
     private var contentsJob: Job? = null
     fun setContents(body: WriterBody) {
         val document = stateNow.document ?: return
-        val now = Clock.System.now()
         setState { it.copy(contents = body.contents) }
 
         contentsJob?.cancel()
@@ -97,31 +94,18 @@ class JournalModel(
             val newBlocks = mutableListOf<Block>()
             val blocks = body.contents.mapIndexed { index, textBlock ->
                 stateNow.blocks.firstOrNull { it.text == textBlock }?.copy(position = index)
-                    ?: Block(
-                        blockId = BlockId.random(),
-                        documentId = document.documentId,
-                        text = textBlock,
-                        position = index,
-                        level = body.blocks[index].markdown.toBlockLevel(),
-                        createdAt = now,
-                    ).also { newBlocks.add(it)}
+                    ?: app.service.block.create(textBlock, document.documentId, index).also { newBlocks.add(it)}
             }
 
             val deletedBlocks = stateNow.blocks.filter { b -> blocks.none { it.blockId == b.blockId } }
 
-            dao.block.deleteByIds(deletedBlocks.map { it.blockId})
-            dao.block.upsert(blocks.map { it.toEntity()})
+            app.dao.block.deleteByIds(deletedBlocks.map { it.blockId})
+            app.dao.block.upsert(blocks.map { it.toEntity()})
 
             newBlocks.map { block ->
                 async {
-                    val level = block.level ?: return@async
-                    if (level != 0) return@async
-                    val embedding = ollama.embed(block.text)?.embeddings?.firstOrNull() ?: return@async
-                    dao.embedding.insert(BlockEmbedding(
-                        blockId = block.blockId,
-                        embedding = embedding
-                    ))
-                    gatherProximityBlocks(block.blockId, embedding)
+                    val be = app.service.embedding.createFromBlock(block) ?: return@async
+                    gatherProximityBlocks(block.blockId, be.embedding)
                 }
             }.awaitAll()
 
@@ -158,7 +142,7 @@ class JournalModel(
     private suspend fun refreshProximities() {
         val block = stateNow.blocks.getOrNull(stateNow.activeBlockIndex) ?: return
         val proximityDistances = distances[block.blockId] ?: return
-        val blocks = dao.block.readByIds(proximityDistances.map { it.blockId })
+        val blocks = app.dao.block.readByIds(proximityDistances.map { it.blockId })
         val proximityBlocks = proximityDistances.map {
                 pd -> ProximityBlock(pd.distance, blocks.first { it.blockId == pd.blockId})
         }
@@ -167,7 +151,7 @@ class JournalModel(
 
     fun newDocument(block: (DocumentId) -> Unit) {
         viewModelScope.launch {
-            block(service.document.create())
+            block(app.service.document.createJournalEntry().documentId)
         }
     }
 
@@ -179,7 +163,7 @@ class JournalModel(
             directory.createDirectories()
             val destination = PlatformFile("${directory.path}/${origin.file.name}")
             origin.copyTo(destination)
-            dao.document.update(document.copy(imagePath = path).toEntity())
+            app.dao.document.update(document.copy(imagePath = path).toEntity())
         }
     }
 }

@@ -62,3 +62,13 @@ fun MarkdownSpan.toSpanStyle(styleSet: StyleSet) = when (this) {
     is BoldSpan -> styleSet.bold
     is ItalicSpan -> styleSet.italic
 }
+
+fun blockLevelOf(text: String) = when {
+    text.startsWith("# ") -> 1
+    text.startsWith("## ") -> 2
+    text.startsWith("### ") -> 3
+    text.startsWith("#### ") -> 4
+    text.startsWith("##### ") -> 5
+    text.length > 10 -> 0
+    else -> null
+}

@@ -40,3 +40,6 @@ data class JournalRoute(val documentId: String) : IdRoute<String>(TITLE, documen
 
 @Serializable
 object JournalFeedRoute : AppRoute("JournalFeed")
+
+@Serializable
+object ImportRoute : AppRoute("Import")

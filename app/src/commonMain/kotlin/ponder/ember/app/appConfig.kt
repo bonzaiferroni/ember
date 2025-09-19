@@ -1,6 +1,7 @@
 package ponder.ember.app
 
 import compose.icons.TablerIcons
+import compose.icons.tablericons.DatabaseImport
 import compose.icons.tablericons.Edit
 import compose.icons.tablericons.Heart
 import compose.icons.tablericons.Home
@@ -14,6 +15,7 @@ import ponder.ember.app.ui.StartScreen
 import ponder.ember.app.ui.ZenWriterScreen
 import ponder.ember.app.ui.JournalScreen
 import ponder.ember.app.ui.JournalFeedScreen
+import ponder.ember.app.ui.ImportScreen
 import pondui.ui.core.PondConfig
 import pondui.ui.core.RouteConfig
 import pondui.ui.nav.PortalDoor
@@ -30,10 +32,12 @@ val appConfig = PondConfig(
         RouteConfig(ExampleProfileRoute::matchRoute) { defaultScreen<ExampleProfileRoute> { ExampleProfileScreen(it) } },
         RouteConfig(WriterRoute::matchRoute) { defaultScreen<WriterRoute> { ZenWriterScreen() } },
         RouteConfig(JournalRoute::matchRoute) { defaultScreen<JournalRoute> { JournalScreen(it) } },
-        RouteConfig(JournalFeedRoute::matchRoute) { defaultScreen<JournalFeedRoute> { JournalFeedScreen() } }
+        RouteConfig(JournalFeedRoute::matchRoute) { defaultScreen<JournalFeedRoute> { JournalFeedScreen() } },
+        RouteConfig(ImportRoute::matchRoute) { defaultScreen<ImportRoute> { ImportScreen() } },
     ),
     doors = persistentListOf(
         PortalDoor(TablerIcons.List, JournalFeedRoute, "Feed"),
+        PortalDoor(TablerIcons.DatabaseImport, ImportRoute)
         // PortalDoor(TablerIcons.Edit, WriterRoute),
         // PortalDoor(TablerIcons.Rocket, ExampleListRoute),
     ),

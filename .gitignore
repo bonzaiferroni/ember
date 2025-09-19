@@ -29,3 +29,4 @@ app/my_room*
 app/backup*
 app/backup-0*
 app/export*
+app/img/*

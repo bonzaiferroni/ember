@@ -57,7 +57,7 @@ class JournalFeedModel(
 
     fun newDocument(block: (DocumentId) -> Unit) {
         viewModelScope.launch {
-            block(service.document.create())
+            block(service.document.createJournalEntry().documentId)
         }
     }
 }

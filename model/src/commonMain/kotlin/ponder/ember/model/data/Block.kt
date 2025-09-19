@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Block(
     val blockId: BlockId,
-    val documentId: DocumentId = DocumentId(""),
+    val documentId: DocumentId,
     // val label: String?,
     val text: String,
     val position: Int,

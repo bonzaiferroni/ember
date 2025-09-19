@@ -90,6 +90,16 @@ CreateEndpoint(Foo, functionName):
 * Add the endpoint routing to `serve*`, where * is the name of the endpoint. Within the body of the endpoint, provide the data using a Dao available on the `tao` property of the routing function, using an existing function if it is possible. Create one if needed.
 * Check to see if the function is referenced in the file that is currently open for more information about the context in which it will be called.
 
+CreateEntity(Foo):
+* Create a data class in `ponder.ember.app.db` called FooEntity to be used as a table definition for the room library. 
+* Base it off of the Foo class in `ponder.ember.model.data` if it exists.
+* The structure should be like `@Entity data class FooEntity(@PrimaryKey val fooId: FooId, ...)`
+* Provide a helper function in the same file `fun Foo.toEntity() = FooEntity(..)` to convert from the model to eh entity.
+* Create an interface `FooDao` with functions for basic CRUD operations. Use `BlockDao` as an example.
+* Add `FooEntity` to classes provided as entities in the `@Database` annotation in `AppDatabase.kt`.
+* Add `getFooDao()` as an abstract function for `AppDatabase`.
+* Add dao to `AppDao` in `AppProvider.kt`.
+
 ## Junie's notes to self
 
 This is where you can create notes to yourself, information that you know you'll need later on.

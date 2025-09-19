@@ -9,8 +9,10 @@ import kotlin.jvm.JvmInline
 @Serializable
 data class Document(
     val documentId: DocumentId,
+    val authorId: AuthorId? = null,
+    val sourceId: SourceId? = null,
     val label: String,
-    val imagePath: String? = null,
+    val imagePath: String?,
     val createdAt: Instant,
 )
 
