@@ -42,6 +42,16 @@ interface BlockDao {
     @Query("SELECT * FROM BlockEntity")
     fun flowAll(): Flow<List<Block>>
 
+    @Query("SELECT b.* FROM BlockEntity AS b " +
+            "JOIN DocumentEntity AS d ON b.documentId = d.documentId " +
+            "WHERE d.authorId IS NULL")
+    fun flowAllJournal(): Flow<List<Block>>
+
+    @Query("SELECT b.* FROM BlockEntity AS b " +
+            "JOIN DocumentEntity AS d ON b.documentId = d.documentId " +
+            "WHERE d.authorId IS NULL")
+    suspend fun readAllJournal(): List<Block>
+
     @Query("SELECT * FROM BlockEntity")
     suspend fun readAll(): List<Block>
 

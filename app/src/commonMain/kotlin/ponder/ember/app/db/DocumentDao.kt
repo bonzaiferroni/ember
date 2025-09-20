@@ -37,6 +37,12 @@ interface DocumentDao {
     @Query("SELECT * FROM DocumentEntity")
     suspend fun readAll(): List<Document>
 
+    @Query("SELECT * FROM DocumentEntity WHERE authorId IS NULL")
+    fun flowAllJournal(): Flow<List<Document>>
+
+    @Query("SELECT * FROM DocumentEntity WHERE authorId IS NULL")
+    suspend fun readAllJournal(): List<Document>
+
     @Query("SELECT * FROM DocumentEntity WHERE documentId = :documentId")
     fun flowDocumentById(documentId: DocumentId): Flow<Document>
 

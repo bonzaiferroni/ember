@@ -32,12 +32,16 @@ class DbBackup(
     private val types = listOf(
         BackupType(
             kClass = Document::class,
-            flow = dao.document.flowAll(),
-            write = { document -> dao.document.insert(document.map{ it.toEntity()}) }) { dao.document.readAll() },
+            flow = dao.document.flowAllJournal(),
+            write = { document -> dao.document.insert(document.map{ it.toEntity()}) },
+            read = { dao.document.readAllJournal() },
+        ),
         BackupType(
             kClass = Block::class,
-            flow = dao.block.flowAll(),
-            write = { blocks -> dao.block.insert(blocks.map { it.toEntity()})}) { dao.block.readAll() },
+            flow = dao.block.flowAllJournal(),
+            write = { blocks -> dao.block.insert(blocks.map { it.toEntity()})},
+            read = { dao.block.readAllJournal() }
+        ),
     )
 
     fun start() {
