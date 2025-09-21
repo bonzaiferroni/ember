@@ -11,6 +11,7 @@ class LocalEmbeddingService(
     suspend fun createFromBlock(block: Block): BlockEmbedding? {
         val level = block.level ?: return null
         if (level != 0) return null
+        if (block.text.length < EMBEDDING_MIN_CHARS) return null
         val embedding = ollama.embed(block.text)?.embeddings?.firstOrNull() ?: return null
         return BlockEmbedding(
             blockId = block.blockId,
@@ -18,3 +19,5 @@ class LocalEmbeddingService(
         ).also { dao.embedding.insert(it) }
     }
 }
+
+const val EMBEDDING_MIN_CHARS = 100

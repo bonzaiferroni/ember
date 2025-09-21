@@ -40,9 +40,9 @@ class ImportEpubModel(
         ioLaunch {
             val author = service.author.createOrRead(authorName)
             val source = service.source.createOrRead(title)
-            val document = service.document.create(title, author.authorId, source.sourceId)
             chapters.forEach { c ->
                 val chapter = epubDoc?.chapters?.first { it.title == c.title } ?: error("chapter not found")
+                val document = service.document.create(chapter.title, author.authorId, source.sourceId)
                 chapter.contents.forEachIndexed { index, content ->
                     val block = service.block.create(content, document.documentId, index)
                     service.embedding.createFromBlock(block)
